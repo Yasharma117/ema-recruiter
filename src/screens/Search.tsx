@@ -7,7 +7,7 @@ import {
 import { SEARCH, FILTERS, FILTER_CATEGORIES, CRITERIA, type FilterChip, type FilterMode } from '../data/search';
 import type { Criterion } from '../lib/types';
 import {
-  Badge, Banner, Button, Card, IconButton, Input, Textarea, ToastStack, cx,
+  Badge, Banner, Button, Card, IconButton, Input, StatusDot, Textarea, ToastStack, cx,
 } from '../components/ui';
 import { AppShell } from '../components/AppShell';
 import { weightShares } from '../lib/scoring';
@@ -119,22 +119,45 @@ export function SearchScreen() {
     <AppShell screen="search" breadcrumbs={['Searches', name]} actions={headerActions}>
       <div className="h-full overflow-y-auto">
         <div className="max-w-[1200px] mx-auto px-5 py-5">
-          {/* Title row */}
-          <div className="flex items-center gap-3 mb-5 flex-wrap">
+          {/* Title + status: the chip says where the search is, the line says what that means. */}
+          <div className="mb-5">
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               aria-label="Search name"
-              className="text-2xl font-medium text-[var(--fg1)] bg-transparent border border-transparent rounded-md px-2 -ml-2 py-0.5 outline-none hover:border-[var(--beige-400)] focus:border-[var(--focus-border)] focus:bg-white min-w-0 flex-1"
+              className="w-full text-2xl font-medium text-[var(--fg1)] bg-transparent border border-transparent rounded-md px-2 -ml-2 py-0.5 outline-none hover:border-[var(--beige-400)] focus:border-[var(--focus-border)] focus:bg-white min-w-0"
             />
-            <Badge
-              variant={store.searchPhase === 'complete' ? 'success'
-                : store.searchPhase === 'running' ? 'info' : 'pending'}
-              size="md"
-            >
-              {store.searchPhase === 'complete' ? 'Complete'
-                : store.searchPhase === 'running' ? 'Running' : 'Draft'}
-            </Badge>
+            <div className="flex items-center gap-2.5 mt-1.5 flex-wrap" aria-live="polite">
+              <span className={cx(
+                'inline-flex items-center gap-1.5 h-6 pl-2 pr-2.5 rounded-pill border text-xs font-medium',
+                store.searchPhase === 'complete' && 'bg-[var(--success-bg)] border-[var(--success-border)] text-[var(--success-text)]',
+                store.searchPhase === 'running' && 'bg-[var(--info-bg)] border-[var(--info-border)] text-[var(--info-text)]',
+                store.searchPhase === 'draft' && 'bg-[var(--beige-100)] border-[var(--beige-400)] text-[var(--fg2)]',
+              )}>
+                {store.searchPhase === 'complete'
+                  ? <Check size={11} weight="bold" />
+                  : <StatusDot tone={store.searchPhase === 'running' ? 'info' : 'idle'}
+                      className={store.searchPhase === 'running' ? 'animate-pulse' : undefined} />}
+                {store.searchPhase === 'complete' ? 'Search complete'
+                  : store.searchPhase === 'running' ? 'Searching' : 'Draft'}
+              </span>
+              <span className="text-sm text-[var(--fg2)] tabular-nums">
+                {store.searchPhase === 'complete' && <>
+                  <span className="font-medium text-[var(--fg1)]">{SEARCH.matched}</span> matched of{' '}
+                  {SEARCH.profilesScored.toLocaleString()} scored · {store.shortlist.size} shortlisted
+                </>}
+                {store.searchPhase === 'running' && <>
+                  Scored {store.scanProgress.toLocaleString()} of {SEARCH.profilesScored.toLocaleString()} profiles…
+                </>}
+                {store.searchPhase === 'draft' && 'Not run yet. Confirm your filters, then begin the search.'}
+              </span>
+              {store.searchPhase === 'complete' && (
+                <Button size="sm" variant="ghost" color="altBrand" iconRight={<ArrowRight size={12} />}
+                  onClick={() => navigate('/candidates')}>
+                  View candidates
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="flex gap-5 items-start flex-col lg:flex-row">
