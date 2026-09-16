@@ -7,13 +7,13 @@ import {
 import { SEARCH, FILTERS, FILTER_CATEGORIES, CRITERIA, type FilterChip, type FilterMode } from '../data/search';
 import type { Criterion } from '../lib/types';
 import {
-  Badge, Banner, Button, Card, IconButton, Textarea, ToastStack, cx,
+  Badge, Banner, Button, Card, IconButton, Input, Textarea, ToastStack, cx,
 } from '../components/ui';
 import { AppShell } from '../components/AppShell';
 import { weightShares } from '../lib/scoring';
 import { useStore } from '../store';
 import {
-  ModePicker, FilterLegend, ScorecardRow, ScorecardInfo, DerivedFrom, MODE_CHIP, MODES, MODE_COPY, MODE_DOT,
+  ModePicker, FilterLegend, ScorecardRow, WeightScale, ScorecardInfo, DerivedFrom, MODE_CHIP, MODES, MODE_COPY, MODE_DOT,
 } from '../components/SearchControls';
 import { UsageOverlay } from '../layouts/LayoutPicker';
 
@@ -29,7 +29,7 @@ export function SearchScreen() {
   const [criteria, setCriteria] = React.useState<Criterion[]>(CRITERIA);
   const [sources, setSources] = React.useState({ public: true, internal: true });
   const [name, setName] = React.useState(SEARCH.name);
-  const [draftCriterion, setDraftCriterion] = React.useState<{ name: string; bar: string } | null>(null);
+  const [draftCriterion, setDraftCriterion] = React.useState<Omit<Criterion, 'id'> | null>(null);
   const [draftFilter, setDraftFilter] = React.useState<{ category: string; value: string } | null>(null);
 
   // What each criterion actually controls, using rank()'s own weighting:
@@ -49,16 +49,19 @@ export function SearchScreen() {
 
   const removeFilter = (id: string) => setFilters((prev) => prev.filter((f) => f.id !== id));
 
+  // Share the draft would take if added now — previewed before committing.
+  const draftShare = React.useMemo(
+    () => draftCriterion && weightShares([...criteria, { ...draftCriterion, id: '__draft' }]).__draft,
+    [criteria, draftCriterion],
+  );
+
   const addCriterion = () => {
     if (!draftCriterion?.name.trim()) return;
-    // Preferred by default: a criterion you just typed should not silently
-    // become a hard gate on a pool you have already sized.
     setCriteria((prev) => [...prev, {
+      ...draftCriterion,
       id: `c_custom_${Date.now()}`,
       name: draftCriterion.name.trim(),
       bar: draftCriterion.bar.trim() || 'Not set — Ema will infer a bar from the role',
-      type: 'preferred',
-      weight: 2,
     }]);
     setDraftCriterion(null);
     toast(`Added “${draftCriterion.name.trim()}” to the scorecard.`);
@@ -297,50 +300,92 @@ export function SearchScreen() {
                 </div>
 
                 {draftCriterion && (
-                  <div className="mt-2 p-2.5 rounded-lg border border-[var(--success-border)] bg-white">
-                    <input
-                      autoFocus
-                      value={draftCriterion.name}
-                      onChange={(e) => setDraftCriterion({ ...draftCriterion, name: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') setDraftCriterion(null);
-                        if (e.key === 'Enter') (e.currentTarget.nextElementSibling as HTMLInputElement)?.focus();
-                      }}
-                      placeholder="What are you looking for? e.g. Streaming data pipelines"
-                      className="w-full bg-transparent outline-none text-sm font-medium text-[var(--fg1)] placeholder:text-[var(--fg3)] placeholder:font-normal"
-                    />
-                    <input
-                      value={draftCriterion.bar}
-                      onChange={(e) => setDraftCriterion({ ...draftCriterion, bar: e.target.value })}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Escape') setDraftCriterion(null);
-                        if (e.key === 'Enter') addCriterion();
-                      }}
-                      placeholder="What would a 5 out of 5 look like?"
-                      className="w-full bg-transparent outline-none text-xs text-[var(--fg2)] mt-1 placeholder:text-[var(--fg3)]"
-                    />
-                    <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-[var(--beige-300)]">
+                  <form
+                    className="mt-2 rounded-lg border border-[var(--focus-border)] bg-white shadow-[var(--shadow-sm)]"
+                    onSubmit={(e) => { e.preventDefault(); addCriterion(); }}
+                    onKeyDown={(e) => { if (e.key === 'Escape') setDraftCriterion(null); }}
+                  >
+                    <div className="p-3 space-y-3">
+                      <div className="text-sm font-medium text-[var(--fg1)]">New criterion</div>
+                      <label className="block">
+                        <span className="block text-xs font-medium text-[var(--fg2)] mb-1">What are you looking for?</span>
+                        <Input
+                          autoFocus
+                          value={draftCriterion.name}
+                          onChange={(e) => setDraftCriterion({ ...draftCriterion, name: e.target.value })}
+                          placeholder="e.g. Streaming data pipelines"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="block text-xs font-medium text-[var(--fg2)] mb-1">
+                          Bar for a 5 <span className="font-normal text-[var(--fg3)]">· optional</span>
+                        </span>
+                        <Input
+                          value={draftCriterion.bar}
+                          onChange={(e) => setDraftCriterion({ ...draftCriterion, bar: e.target.value })}
+                          placeholder="e.g. Owned a Kafka or Flink pipeline at >1M events/sec"
+                        />
+                        <span className="block text-xs text-[var(--fg3)] mt-1">Leave blank and Ema infers a bar from the role.</span>
+                      </label>
+                      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-[var(--fg3)] w-[68px] shrink-0">Type</span>
+                          <div role="radiogroup" aria-label="Criterion type"
+                            className="inline-flex p-0.5 gap-0.5 bg-[var(--beige-100)] border border-[var(--beige-300)] rounded-sm">
+                            {(['preferred', 'required'] as const).map((t) => (
+                              <button key={t} type="button" role="radio" aria-checked={draftCriterion.type === t}
+                                onClick={() => setDraftCriterion({ ...draftCriterion, type: t, weight: t === 'required' ? 3 : 2 })}
+                                title={t === 'required'
+                                  ? 'Required — scoring 1 or 2 here caps the candidate. Counts double.'
+                                  : 'Preferred — shapes the ranking, never excludes.'}
+                                className={cx(
+                                  'h-6 px-2.5 rounded-xs text-xs font-medium capitalize cursor-pointer transition-colors duration-150 border',
+                                  draftCriterion.type === t
+                                    ? 'bg-white text-[var(--fg1)] border-[var(--beige-300)] shadow-[var(--shadow-xs)]'
+                                    : 'text-[var(--fg2)] border-transparent hover:text-[var(--fg1)]',
+                                )}>
+                                {t}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs text-[var(--fg3)] shrink-0">Importance</span>
+                          <WeightScale
+                            name={draftCriterion.name || 'new criterion'}
+                            value={draftCriterion.weight}
+                            share={draftShare ?? undefined}
+                            onChange={(n) => setDraftCriterion({ ...draftCriterion, weight: n })}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-2.5 border-t border-[var(--beige-300)] bg-[var(--beige-50)] rounded-b-lg">
                       <span className="text-xs text-[var(--fg3)]">
-                        Added as Preferred, weight 2. Change it once it is in the list.
+                        {draftCriterion.type === 'required'
+                          ? 'Scoring 1 or 2 here caps a candidate.'
+                          : 'Shapes the ranking, never excludes anyone.'}
                       </span>
                       <div className="ml-auto flex items-center gap-1.5">
-                        <Button size="xs" variant="ghost" color="altBrand" onClick={() => setDraftCriterion(null)}>
+                        <Button type="button" size="sm" variant="ghost" color="altBrand" onClick={() => setDraftCriterion(null)}>
                           Cancel
                         </Button>
-                        <Button size="xs" disabled={!draftCriterion.name.trim()} onClick={addCriterion}>
-                          Add
+                        <Button type="submit" size="sm" icon={<Plus size={13} />}
+                          disabled={!draftCriterion.name.trim()}>
+                          Add criterion
                         </Button>
                       </div>
                     </div>
-                  </div>
+                  </form>
                 )}
 
                 <div className="flex items-center gap-2 mt-3">
-                  <Button size="sm" variant="ghost" color="altBrand" icon={<Plus size={13} />}
-                    disabled={!!draftCriterion}
-                    onClick={() => setDraftCriterion({ name: '', bar: '' })}>
-                    Add criterion
-                  </Button>
+                  {!draftCriterion && (
+                    <Button size="sm" variant="ghost" color="altBrand" icon={<Plus size={13} />}
+                      onClick={() => setDraftCriterion({ name: '', bar: '', type: 'preferred', weight: 2 })}>
+                      Add criterion
+                    </Button>
+                  )}
                   <span className="text-xs text-[var(--fg3)] ml-auto">
                     Shares add up to 100%. Raising one lowers the rest.
                   </span>
