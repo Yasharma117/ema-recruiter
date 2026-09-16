@@ -1,0 +1,214 @@
+@import "tailwindcss";
+@import "./tokens.css" layer(base);
+
+@theme inline {
+  --font-sans: var(--app-font-family);
+  --font-mono: var(--font-mono);
+
+  --color-ai-magic: var(--ai-magic);
+  --color-ai-magic-bg: var(--ai-magic-bg);
+  --color-ai-magic-bg-subtle: var(--ai-magic-bg-subtle);
+  --color-app-background: var(--app-background);
+  --color-app-background-accent: var(--app-background-accent);
+  --color-app-foreground: var(--app-foreground);
+  --color-app-muted-foreground: var(--app-muted-foreground);
+  --color-beige-300: var(--beige-300);
+  --color-beige-50: var(--beige-50);
+  --color-beige-600: var(--beige-600);
+  --color-beige-900: var(--beige-900);
+  --color-bg-accent: var(--bg-accent);
+  --color-bg1: var(--bg1);
+  --color-bg2: var(--bg2);
+  --color-bg3: var(--bg3);
+  --color-blue-300: var(--blue-300);
+  --color-blue-50: var(--blue-50);
+  --color-blue-600: var(--blue-600);
+  --color-blue-900: var(--blue-900);
+  --color-border-color: var(--border-color);
+  --color-brand-primary: var(--brand-primary);
+  --color-brand-primary-accent: var(--brand-primary-accent);
+  --color-brand-primary-active: var(--brand-primary-active);
+  --color-brand-primary-foreground: var(--brand-primary-foreground);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-secondary-accent: var(--brand-secondary-accent);
+  --color-brand-secondary-active: var(--brand-secondary-active);
+  --color-brand-secondary-border: var(--brand-secondary-border);
+  --color-brand-secondary-foreground: var(--brand-secondary-foreground);
+  --color-brand-secondary-hover: var(--brand-secondary-hover);
+  --color-brand-secondary-muted: var(--brand-secondary-muted);
+  --color-brand-secondary-pressed: var(--brand-secondary-pressed);
+  --color-brand-secondary-strong: var(--brand-secondary-strong);
+  --color-ema-primary-green: var(--ema-primary-green);
+  --color-error: var(--error);
+  --color-error-bg: var(--error-bg);
+  --color-error-bg-subtle: var(--error-bg-subtle);
+  --color-fg-inverse: var(--fg-inverse);
+  --color-fg1: var(--fg1);
+  --color-fg2: var(--fg2);
+  --color-fg3: var(--fg3);
+  --color-focus-border: var(--focus-border);
+  --color-focus-ring: var(--focus-ring);
+  --color-gray-300: var(--gray-300);
+  --color-gray-50: var(--gray-50);
+  --color-gray-600: var(--gray-600);
+  --color-gray-900: var(--gray-900);
+  --color-green-300: var(--green-300);
+  --color-green-50: var(--green-50);
+  --color-green-600: var(--green-600);
+  --color-green-900: var(--green-900);
+  --color-info: var(--info);
+  --color-info-bg: var(--info-bg);
+  --color-info-bg-subtle: var(--info-bg-subtle);
+  --color-muted: var(--muted);
+  --color-muted-bg: var(--muted-bg);
+  --color-orange-300: var(--orange-300);
+  --color-orange-50: var(--orange-50);
+  --color-orange-600: var(--orange-600);
+  --color-orange-900: var(--orange-900);
+  --color-pending: var(--pending);
+  --color-pending-bg: var(--pending-bg);
+  --color-purple-300: var(--purple-300);
+  --color-purple-50: var(--purple-50);
+  --color-purple-600: var(--purple-600);
+  --color-purple-900: var(--purple-900);
+  --radius-lg: var(--radius-lg);
+  --radius-md: var(--radius-md);
+  --radius-pill: var(--radius-pill);
+  --radius-sm: var(--radius-sm);
+  --radius-xl: var(--radius-xl);
+  --radius-xs: var(--radius-xs);
+  --color-red-300: var(--red-300);
+  --color-red-50: var(--red-50);
+  --color-red-600: var(--red-600);
+  --color-red-900: var(--red-900);
+  --shadow-focus: var(--shadow-focus);
+  --shadow-lg: var(--shadow-lg);
+  --shadow-md: var(--shadow-md);
+  --shadow-sm: var(--shadow-sm);
+  --shadow-xl: var(--shadow-xl);
+  --shadow-xs: var(--shadow-xs);
+  --color-success: var(--success);
+  --color-success-bg: var(--success-bg);
+  --color-success-bg-subtle: var(--success-bg-subtle);
+  --color-warning: var(--warning);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-bg-subtle: var(--warning-bg-subtle);
+  --color-white: var(--white);
+  --color-yellow-300: var(--yellow-300);
+  --color-yellow-50: var(--yellow-50);
+  --color-yellow-600: var(--yellow-600);
+  --color-yellow-900: var(--yellow-900);
+
+  --color-success-text: var(--success-text);
+  --color-error-text: var(--error-text);
+  --color-warning-text: var(--warning-text);
+  --color-info-text: var(--info-text);
+  --color-pending-text: var(--pending-text);
+  --color-ai-magic-text: var(--ai-magic-text);
+  --color-muted-text: var(--muted-text);
+  --color-pending-border: var(--pending-border);
+
+  --ease-out-quint: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@layer base {
+  /* ---- app base ---- */
+  html, body, #root { height: 100%; margin: 0; }
+  body {
+    background: var(--app-background);
+    color: var(--fg1);
+    font-family: var(--app-font-family);
+    font-size: 14px; line-height: 20px;
+    -webkit-font-smoothing: antialiased;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  button { font-family: inherit; }
+
+  /* Green focus ring everywhere — never native blue. */
+  *:focus-visible {
+    outline: none;
+    box-shadow: var(--shadow-focus);
+    border-radius: var(--radius-sm);
+  }
+
+  ::selection { background: var(--green-200); }
+
+  /* Thin warm scrollbars */
+  * { scrollbar-width: thin; scrollbar-color: var(--beige-500) transparent; }
+  *::-webkit-scrollbar { width: 10px; height: 10px; }
+  *::-webkit-scrollbar-thumb {
+    background: var(--beige-500); border-radius: 9999px;
+    border: 3px solid transparent; background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover { background-color: var(--beige-700); background-clip: content-box; }
+}
+
+
+/* ---------------------------------------------------------------------------
+   Text on a semantic tint.
+
+   The design system gives each status a solid (--success), a foreground for
+   text on that solid (--success-fg: white), and light tints (--success-bg,
+   --success-bg-subtle) — but no colour for text sitting ON the tint, which is
+   what a badge or a banner actually needs. --pending-fg already follows this
+   shape (yellow-960 on yellow-200); these complete the set at >=4.5:1 so the
+   status colours can be used semantically instead of by raw scale value.
+--------------------------------------------------------------------------- */
+:root {
+  --success-text:   var(--green-900);
+  --error-text:     var(--red-930);
+  --warning-text:   var(--orange-960);
+  --info-text:      var(--blue-960);
+  --pending-text:   var(--yellow-960);
+  --ai-magic-text:  var(--purple-800);
+  --muted-text:     var(--gray-930);
+  /* The DS gives every other status a border; pending is missing one. */
+  --pending-border: var(--yellow-500);
+}
+
+/* ---- motion: 150–400ms ease-out-quint, no bounce ---- */
+@keyframes emaFade { from { opacity: 0 } to { opacity: 1 } }
+@keyframes emaIn   { from { opacity: 0; transform: translateY(2px) } to { opacity: 1; transform: none } }
+@keyframes emaPop  { from { opacity: 0; transform: scale(.96) } to { opacity: 1; transform: none } }
+@keyframes emaSlide{ from { transform: translateX(16px); opacity: .6 } to { transform: none; opacity: 1 } }
+@keyframes emaRise { from { opacity: 0; transform: translateY(8px) } to { opacity: 1; transform: none } }
+@keyframes emaShimmer { from { transform: translateX(-100%) } to { transform: translateX(100%) } }
+
+.ema-row-enter { animation: emaIn 250ms var(--ease-out-quint) both; }
+
+/* Skeleton shimmer, left to right, beige-400 -> beige-50 */
+.ema-skeleton { position: relative; overflow: hidden; background: var(--beige-200); }
+.ema-skeleton::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent, var(--beige-50), transparent);
+  animation: emaShimmer 1.4s var(--ease-out-quint) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* Visually hidden, still announced. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+}
+
+/* Rendered NOTES.md / LAYOUTS.md */
+.doc { color: var(--fg1); font-size: 14px; line-height: 22px; }
+.doc h1 { font-size: 26px; line-height: 32px; font-weight: 700; margin: 0 0 16px; }
+.doc h2 { font-size: 20px; line-height: 28px; font-weight: 700; margin: 32px 0 10px; }
+.doc h3 { font-size: 16px; line-height: 24px; font-weight: 700; margin: 24px 0 8px; }
+.doc p, .doc ul, .doc ol, .doc table, .doc pre, .doc blockquote { margin: 0 0 14px; }
+.doc ul { list-style: disc; padding-left: 22px; }
+.doc ol { list-style: decimal; padding-left: 22px; }
+.doc li { margin: 2px 0; }
+.doc a { color: var(--brand-primary); text-decoration: underline; }
+.doc hr { border: 0; border-top: 1px solid var(--beige-300); margin: 28px 0; }
+.doc code { font-family: var(--font-mono); font-size: 12.5px; background: var(--beige-100); padding: 1px 4px; border-radius: 4px; }
+.doc pre { background: var(--beige-100); padding: 12px; border-radius: 6px; overflow-x: auto; }
+.doc pre code { background: none; padding: 0; }
+.doc blockquote { border-left: 3px solid var(--beige-400); padding-left: 12px; color: var(--fg2); }
+.doc table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.doc th, .doc td { border: 1px solid var(--beige-300); padding: 6px 10px; text-align: left; vertical-align: top; }
+.doc th { background: var(--beige-100); font-weight: 600; }
