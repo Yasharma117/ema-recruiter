@@ -20,6 +20,8 @@ import { CalendarBlank, VideoCamera, ArrowRight } from '@phosphor-icons/react';
 import { SequenceEditor, DraftEditor } from '../components/SequenceEditor';
 import { ConfirmReschedule } from '../components/ConfirmReschedule';
 import { useStore } from '../store';
+import { TimeChange } from '../components/Notifications';
+import { useFocusTarget } from '../lib/useFocusTarget';
 import { UsageOverlay } from '../layouts/LayoutPicker';
 
 export function OutreachScreen() {
@@ -48,6 +50,13 @@ export function OutreachScreen() {
     const first = arrivals[0] ?? outreach.find((r) => nextAction(r).kind === 'human') ?? outreach[0];
     if (first) setSelectedId(first.candidateId);
   }, [outreach, selectedId, arrivals]);
+
+  // Arriving from a notification overrides that: it names a person. Declared
+  // after the effect above so it wins when both run on the same mount.
+  useFocusTarget((id, movedCall) => {
+    setSelectedId(id);
+    if (movedCall) setConfirmFor(id);
+  });
 
   const records = React.useMemo(() => {
     let list = outreach;
@@ -711,46 +720,63 @@ function ArrivalBanner({
   arrivals, byId, onOpen, onDismiss,
 }: {
   arrivals: OutreachRecord[];
-  byId: Map<string, { name: string }>;
+  byId: Map<string, { name: string; avatarTone?: 'green' | 'purple' | 'beige' }>;
   onOpen: (id: string) => void;
   onDismiss: () => void;
 }) {
   const calendarChanges = arrivals.filter((r) => r.meeting?.lastChangedBy === 'candidate');
   const drafts = arrivals.filter((r) => !calendarChanges.includes(r));
   const lead = calendarChanges[0] ?? drafts[0];
+  const leadName = byId.get(lead.candidateId)?.name ?? '';
   const first = (id: string) => byId.get(id)?.name.split(' ')[0] ?? 'They';
+  const moved = calendarChanges.length > 0;
 
-  const title = calendarChanges.length
+  const title = moved
     ? calendarChanges.length === 1
-      ? `${first(calendarChanges[0].candidateId)} moved your call.`
-      : `${calendarChanges.length} calls were moved from the candidates' side.`
-    : `${drafts.length} candidate${drafts.length === 1 ? '' : 's'} added to outreach.`;
+      ? `${first(calendarChanges[0].candidateId)} moved your call`
+      : `${calendarChanges.length} calls were moved from the candidates' side`
+    : `${drafts.length} candidate${drafts.length === 1 ? '' : 's'} added to outreach`;
 
-  const body = calendarChanges.length
-    ? calendarChanges.length === 1 && calendarChanges[0].meeting?.booked
-      ? `Now ${calendarChanges[0].meeting.booked.theirs} their time. Nothing is confirmed until you accept it.`
-      : 'Nothing is confirmed until you accept the new times.'
+  // One moved call can show exactly what moved; anything else gets the sentence.
+  const single = moved && calendarChanges.length === 1 ? calendarChanges[0].meeting : undefined;
+  const body = moved
+    ? 'Nothing is confirmed until you accept.'
     : `${drafts.length === 1 ? 'A draft is' : 'Drafts are'} ready for you to review. Nothing sends until you approve.`;
 
   return (
-    <Banner
-      variant={calendarChanges.length ? 'warning' : 'magic'}
-      icon={calendarChanges.length
-        ? <CalendarBlank size={15} weight="bold" />
-        : <Sparkle size={15} weight="fill" />}
-      title={title}
-      action={
-        <Button
-          size="xs"
-          color={calendarChanges.length ? 'brand' : 'aiMagic'}
-          onClick={() => onOpen(lead.candidateId)}
-        >
-          {calendarChanges.length ? 'Review the change' : 'Review the first draft'}
-        </Button>
-      }
-      onDismiss={onDismiss}
-    >
-      {body}
-    </Banner>
+    <div className={cx(
+      'flex items-center gap-3 rounded-lg border bg-white pl-3 pr-2 py-2.5 shadow-[var(--shadow-sm)]',
+      moved ? 'border-[var(--warning-border)]' : 'border-[var(--ai-magic-border)]',
+    )}>
+      <span
+        aria-hidden
+        className={cx('w-1 self-stretch rounded-full shrink-0', moved ? 'bg-[var(--warning)]' : 'bg-[var(--ai-magic)]')}
+      />
+      {calendarChanges.length === 1 || drafts.length === 1
+        ? <Avatar name={leadName} size={32} tone={byId.get(lead.candidateId)?.avatarTone ?? 'beige'} />
+        : moved
+          ? <CalendarBlank size={18} weight="bold" className="text-[var(--warning-text)] shrink-0" />
+          : <Sparkle size={18} weight="fill" className="text-[var(--ai-magic-text)] shrink-0" />}
+
+      <div className="min-w-0 flex-1">
+        <div className="text-sm font-medium text-[var(--fg1)] truncate">{title}</div>
+        <div className="mt-0.5">
+          {single?.booked
+            ? <TimeChange from={single.previous} to={single.booked} />
+            : <span className="text-sm text-[var(--fg2)]">{body}</span>}
+        </div>
+      </div>
+
+      <Button
+        size="sm"
+        color={moved ? 'brand' : 'aiMagic'}
+        iconRight={<ArrowRight size={13} />}
+        className="shrink-0"
+        onClick={() => onOpen(lead.candidateId)}
+      >
+        {moved ? 'Review the change' : 'Review the first draft'}
+      </Button>
+      <IconButton icon={<X size={14} />} onClick={onDismiss} title="Dismiss" className="shrink-0" />
+    </div>
   );
 }

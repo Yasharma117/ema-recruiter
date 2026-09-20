@@ -19,41 +19,60 @@ const BTN_SIZE: Record<BtnSize, string> = {
 
 const BTN_PALETTE: Record<string, string> = {
   'primary/brand': 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:bg-[var(--brand-primary-accent)] active:bg-[var(--brand-primary-active)]',
-  'primary/altBrand': 'bg-[var(--beige-200)] text-[var(--beige-960)] hover:bg-[var(--beige-300)]',
-  'primary/aiMagic': 'bg-[var(--ai-magic)] text-white hover:bg-[var(--purple-900)]',
-  'primary/destructive': 'bg-[var(--error-bg-subtle)] text-[var(--error-text)] border border-[var(--error-border)] hover:bg-[var(--error-bg)]',
-  'secondary/brand': 'bg-white text-[var(--fg1)] border border-[var(--beige-500)] hover:bg-[var(--beige-50)]',
-  'secondary/altBrand': 'bg-white text-[var(--beige-960)] border border-[var(--beige-500)] hover:bg-[var(--beige-100)]',
-  'secondary/aiMagic': 'bg-white text-[var(--ai-magic-text)] border border-[var(--ai-magic-border)] hover:bg-[var(--ai-magic-bg-subtle)]',
-  'secondary/destructive': 'bg-white text-[var(--error-text)] border border-[var(--error-border)] hover:bg-[var(--error-bg-subtle)]',
-  'ghost/brand': 'bg-transparent text-[var(--fg1)] hover:bg-[var(--beige-100)]',
-  'ghost/altBrand': 'bg-transparent text-[var(--fg2)] hover:bg-[var(--beige-100)]',
-  'ghost/aiMagic': 'bg-transparent text-[var(--ai-magic-text)] hover:bg-[var(--ai-magic-bg-subtle)]',
-  'ghost/destructive': 'bg-transparent text-[var(--error-text)] hover:bg-[var(--error-bg-subtle)]',
+  'primary/altBrand': 'bg-[var(--beige-200)] text-[var(--beige-960)] hover:bg-[var(--beige-300)] active:bg-[var(--beige-400)]',
+  'primary/aiMagic': 'bg-[var(--ai-magic)] text-white hover:bg-[var(--purple-900)] active:bg-[var(--purple-960)]',
+  'primary/destructive': 'bg-[var(--error-bg-subtle)] text-[var(--error-text)] border border-[var(--error-border)] hover:bg-[var(--error-bg)] active:bg-[var(--red-300)]',
+  'secondary/brand': 'bg-white text-[var(--fg1)] border border-[var(--beige-500)] hover:bg-[var(--beige-50)] active:bg-[var(--beige-200)]',
+  'secondary/altBrand': 'bg-white text-[var(--beige-960)] border border-[var(--beige-500)] hover:bg-[var(--beige-100)] active:bg-[var(--beige-300)]',
+  'secondary/aiMagic': 'bg-white text-[var(--ai-magic-text)] border border-[var(--ai-magic-border)] hover:bg-[var(--ai-magic-bg-subtle)] active:bg-[var(--ai-magic-bg)]',
+  'secondary/destructive': 'bg-white text-[var(--error-text)] border border-[var(--error-border)] hover:bg-[var(--error-bg-subtle)] active:bg-[var(--error-bg)]',
+  'ghost/brand': 'bg-transparent text-[var(--fg1)] hover:bg-[var(--beige-100)] active:bg-[var(--beige-300)]',
+  'ghost/altBrand': 'bg-transparent text-[var(--fg2)] hover:bg-[var(--beige-100)] active:bg-[var(--beige-300)]',
+  'ghost/aiMagic': 'bg-transparent text-[var(--ai-magic-text)] hover:bg-[var(--ai-magic-bg-subtle)] active:bg-[var(--ai-magic-bg)]',
+  'ghost/destructive': 'bg-transparent text-[var(--error-text)] hover:bg-[var(--error-bg-subtle)] active:bg-[var(--error-bg)]',
 };
+
+/** In-button progress. A button that stays idle-looking after a click reads as broken. */
+export function Spinner({ size = 14, className }: { size?: number; className?: string }) {
+  return (
+    <svg viewBox="0 0 16 16" width={size} height={size} className={cx('animate-spin shrink-0', className)}
+      fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <circle cx="8" cy="8" r="6" className="opacity-25" />
+      <path d="M14 8a6 6 0 0 0-6-6" strokeLinecap="round" />
+    </svg>
+  );
+}
 
 export function Button({
   children, variant = 'primary', color = 'brand', size = 'md',
-  icon, iconRight, block, className, ...rest
+  icon, iconRight, block, loading, className, disabled, ...rest
 }: {
   variant?: BtnVariant; color?: BtnColor; size?: BtnSize;
   icon?: React.ReactNode; iconRight?: React.ReactNode; block?: boolean;
+  /** Swaps the leading icon for a spinner and blocks further clicks. */
+  loading?: boolean;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       {...rest}
+      disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={cx(
         'inline-flex items-center justify-center font-bold whitespace-nowrap select-none',
         'transition-[background-color,border-color,color] duration-150 ease-[var(--ease-out-quint)]',
-        'disabled:bg-[var(--beige-100)] disabled:text-[var(--beige-800)] disabled:border disabled:border-[var(--beige-300)] disabled:cursor-not-allowed disabled:hover:bg-[var(--beige-100)]',
         BTN_SIZE[size],
-        BTN_PALETTE[`${variant}/${color}`] ?? BTN_PALETTE['primary/brand'],
+        // Loading keeps the button's own colour: work in progress is not the
+        // same state as "you cannot do this".
+        disabled && !loading
+          ? 'bg-[var(--beige-100)] text-[var(--beige-800)] border border-[var(--beige-300)] cursor-not-allowed hover:bg-[var(--beige-100)]'
+          : BTN_PALETTE[`${variant}/${color}`] ?? BTN_PALETTE['primary/brand'],
         block && 'w-full',
-        !rest.disabled && 'cursor-pointer',
+        !(disabled || loading) && 'cursor-pointer',
+        loading && 'cursor-wait',
         className,
       )}
     >
-      {icon}
+      {loading ? <Spinner size={size === 'lg' ? 16 : 13} /> : icon}
       {children}
       {iconRight}
     </button>
@@ -69,9 +88,10 @@ export function IconButton({
     <button
       {...rest}
       className={cx(
-        'inline-flex items-center justify-center shrink-0 cursor-pointer transition-colors duration-150',
-        'text-[var(--fg2)] hover:bg-[var(--beige-100)] hover:text-[var(--fg1)]',
-        'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent',
+        'inline-flex items-center justify-center shrink-0 transition-colors duration-150',
+        'text-[var(--fg2)] hover:bg-[var(--beige-100)] hover:text-[var(--fg1)] active:bg-[var(--beige-300)]',
+        'disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent disabled:hover:text-[var(--fg2)] disabled:active:bg-transparent',
+        !rest.disabled && 'cursor-pointer',
         active && 'bg-[var(--beige-200)] text-[var(--fg1)]',
         s, className,
       )}
@@ -201,23 +221,27 @@ export function Textarea({ className, ...rest }: React.TextareaHTMLAttributes<HT
 }
 
 export function Checkbox({
-  checked, indeterminate, onChange, className, label,
+  checked, indeterminate, onChange, className, label, disabled,
 }: {
   checked: boolean; indeterminate?: boolean; onChange: (v: boolean) => void;
-  className?: string; label?: string;
+  className?: string; label?: string; disabled?: boolean;
 }) {
   return (
     <button
       role="checkbox"
       aria-checked={indeterminate ? 'mixed' : checked}
       aria-label={label}
+      disabled={disabled}
       onClick={(e) => { e.stopPropagation(); onChange(!checked); }}
       className={cx(
-        'size-4 rounded-xs border shrink-0 inline-flex items-center justify-center cursor-pointer',
+        'size-4 rounded-xs border shrink-0 inline-flex items-center justify-center',
         'transition-colors duration-150',
         checked || indeterminate
-          ? 'bg-[var(--brand-primary)] border-[var(--brand-primary)] text-[var(--brand-primary-foreground)]'
-          : 'bg-white border-[var(--beige-600)] hover:border-[var(--focus-border)]',
+          ? 'bg-[var(--brand-primary)] border-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:bg-[var(--brand-primary-accent)] active:bg-[var(--brand-primary-active)]'
+          : 'bg-white border-[var(--beige-600)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-50)] active:bg-[var(--beige-200)]',
+        disabled
+          ? 'opacity-40 cursor-not-allowed hover:bg-white hover:border-[var(--beige-600)]'
+          : 'cursor-pointer',
         className,
       )}
     >

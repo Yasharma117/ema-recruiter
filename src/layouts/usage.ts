@@ -159,6 +159,15 @@ export const REGION_USAGE: Record<ScreenId, RegionUsage[]> = {
 
   outreach: [
     {
+      id: 'bulk',
+      label: 'Bulk actions',
+      frequency: 2,
+      touches: '1–2×',
+      dwell: '8s',
+      optimisedFor: 'Clearing a whole stage at once — approve every ready draft, close out every non-reply',
+      costIfWrong: 'Six identical decisions become six separate trips through the queue',
+    },
+    {
       id: 'next-action',
       label: 'Next action',
       frequency: 5,
@@ -210,7 +219,7 @@ export const VARIANTS: Record<ScreenId, { id: VariantId; name: string; bet: stri
   ],
   outreach: [
     { id: 'a', name: 'Grouped table', bet: 'Group by who is being waited on; needs-you first.', sacrifice: 'Still a list you can browse instead of clear.', steals: 'Front Open/Later/Done' },
-    { id: 'b', name: 'Focus queue', bet: 'Six decisions is a queue — show one, keyboard-first.', sacrifice: 'No overview of pipeline shape at all.', steals: 'Superhuman triage / Linear Triage' },
+    { id: 'b', name: 'Queue + pipeline strip', bet: 'Decide one at a time, with the whole pipeline in peripheral vision; the board expands in place when the queue empties.', sacrifice: 'While triaging, a column is a count and a row of faces — not readable cards.', steals: 'Superhuman triage · Greenhouse who-is-blocking colour · Ashby review mode' },
     { id: 'c', name: 'Pipeline board', bet: 'Built to be disproven: the affordance lies.', sacrifice: '4× the width for the same information.', steals: 'Greenhouse visual pipeline' },
   ],
 };

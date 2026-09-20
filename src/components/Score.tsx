@@ -102,9 +102,16 @@ export function ScoreBreakdown({ candidate, criteria }: { candidate: Candidate; 
 }
 
 /** Tier 1: what sits in the table cell. Pill + sparkbar + coverage + reason. */
+/**
+ * The score, as a table cell: band pill, per-criterion sparkbar, coverage.
+ *
+ * The "why" clause used to live here too, and truncated mid-word every time.
+ * It now has its own column, so this cell keeps the two lines a recruiter
+ * actually scans down: the number, and how much of it is evidence-backed.
+ */
 export function ScoreCell({
-  candidate, criteria, reason,
-}: { candidate: Candidate; criteria: Criterion[]; reason: string }) {
+  candidate, criteria,
+}: { candidate: Candidate; criteria: Criterion[] }) {
   const r = rank(candidate, criteria);
   return (
     <div className="min-w-0">
@@ -113,12 +120,12 @@ export function ScoreCell({
           <ScorePill ranking={r} />
         </Tooltip>
         <Sparkbar candidate={candidate} criteria={criteria} />
-        <span className={cx('text-xs tabular-nums', r.lowCoverage ? 'text-[var(--warning-text)]' : 'text-[var(--fg3)]')}>
-          {r.scored} of {r.total}
-        </span>
       </div>
-      <div className={cx('text-xs mt-1 truncate', r.gateFailed && !r.gateOverridden ? 'text-[var(--error-text)]' : 'text-[var(--fg2)]')}>
-        {reason}
+      <div className={cx(
+        'text-xs tabular-nums mt-1 leading-4',
+        r.lowCoverage ? 'text-[var(--warning-text)]' : 'text-[var(--fg3)]',
+      )}>
+        {r.scored} of {r.total} scored
       </div>
     </div>
   );

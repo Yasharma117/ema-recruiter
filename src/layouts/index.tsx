@@ -3,7 +3,7 @@ import { OutreachScreen } from '../screens/Outreach';
 import { SearchScreen } from '../screens/Search';
 import { CandidatesSplit } from './CandidatesSplit';
 import { CandidatesGrid } from './CandidatesGrid';
-import { OutreachFocus } from './OutreachFocus';
+import { OutreachFocusBoard } from './OutreachFocus';
 import { OutreachBoard } from './OutreachBoard';
 import { SearchConversational } from './SearchConversational';
 import { SearchLivePreview } from './SearchLivePreview';
@@ -27,7 +27,7 @@ export function CandidatesRoute() {
 
 export function OutreachRoute() {
   const v = useVariant('outreach');
-  if (v === 'b') return <OutreachFocus />;
+  if (v === 'b') return <OutreachFocusBoard />;
   if (v === 'c') return <OutreachBoard />;
   return <OutreachScreen />;
 }

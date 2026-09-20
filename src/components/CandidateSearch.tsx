@@ -74,7 +74,7 @@ export function CandidateSearch({
           <button
             onClick={() => setQuery('')}
             aria-label="Clear search"
-            className="text-[var(--fg3)] hover:text-[var(--fg1)] cursor-pointer shrink-0 pr-2"
+            className="text-[var(--fg3)] rounded-xs hover:text-[var(--fg1)] active:text-[var(--fg2)] cursor-pointer shrink-0 pr-2"
           >
             <X size={12} weight="bold" />
           </button>
@@ -91,8 +91,9 @@ export function CandidateSearch({
                 'flex items-center gap-1.5 h-full px-2.5 rounded-r-md text-xs font-medium cursor-pointer shrink-0',
                 'transition-colors duration-150',
                 activeCount || open
-                  ? 'text-[var(--success-text)] bg-[var(--success-bg-subtle)]'
-                  : 'text-[var(--fg2)] hover:text-[var(--fg1)]',
+                  ? 'text-[var(--success-text)] bg-[var(--success-bg-subtle)] hover:bg-[var(--success-bg)]'
+                  : 'text-[var(--fg2)] hover:text-[var(--fg1)] hover:bg-[var(--beige-100)]',
+                'active:bg-[var(--beige-200)]',
               )}
             >
               <FunnelSimple size={13} weight={activeCount ? 'bold' : 'regular'} />
@@ -122,7 +123,7 @@ export function CandidateSearch({
               {activeCount > 0 && (
                 <button
                   onClick={() => onClearFilters?.()}
-                  className="text-xs text-[var(--fg2)] hover:text-[var(--fg1)] cursor-pointer"
+                  className="text-xs text-[var(--fg2)] rounded-xs px-1 hover:text-[var(--fg1)] hover:bg-[var(--beige-100)] active:bg-[var(--beige-200)] cursor-pointer"
                 >
                   Clear all
                 </button>
@@ -138,14 +139,15 @@ export function CandidateSearch({
                   onClick={() => onToggleFilter?.(f.id)}
                   className={cx(
                     'w-full flex items-start gap-2.5 px-2 py-2 rounded-md text-left cursor-pointer',
-                    'transition-colors duration-150 hover:bg-[var(--beige-100)]',
+                    'transition-colors duration-150 hover:bg-[var(--beige-100)] active:bg-[var(--beige-200)]',
                   )}
                 >
                   <span className={cx(
                     'size-4 rounded-xs border flex items-center justify-center shrink-0 mt-px',
+                    'transition-colors duration-150',
                     on
                       ? 'bg-[var(--brand-primary)] border-[var(--brand-primary)] text-[var(--brand-primary-foreground)]'
-                      : 'border-[var(--beige-600)]',
+                      : 'border-[var(--beige-600)] bg-white',
                   )}>
                     {on && <Check size={10} weight="bold" />}
                   </span>

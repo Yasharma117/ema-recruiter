@@ -5,6 +5,7 @@ import './styles/index.css';
 import { StoreProvider } from './store';
 import { SearchRoute, CandidatesRoute, OutreachRoute } from './layouts';
 import { MessagesScreen } from './screens/Messages';
+import { Landing } from './screens/Landing';
 import { DocScreen } from './screens/Doc';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
@@ -12,7 +13,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <BrowserRouter>
       <StoreProvider>
         <Routes>
-          <Route path="/" element={<Navigate to="/candidates" replace />} />
+          <Route path="/" element={<Landing />} />
           <Route path="/search" element={<SearchRoute />} />
           <Route path="/candidates" element={<CandidatesRoute />} />
           <Route path="/outreach" element={<OutreachRoute />} />

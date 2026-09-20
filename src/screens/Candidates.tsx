@@ -6,7 +6,7 @@ import {
   UsersThree, MagnifyingGlass, CaretUpDown, ArrowUp, ArrowDown, Users, X, Plus, Minus,
 } from '@phosphor-icons/react';
 import type { Candidate, Criterion, OutreachState } from '../lib/types';
-import { rankAll, reasonClause, rank, bandChangeCount, applyOverrides, matchesQuery } from '../lib/scoring';
+import { rankAll, reasonClause, rank, bandChangeCount, applyOverrides, matchesQuery, weightShares } from '../lib/scoring';
 import { SEARCH } from '../data/search';
 import { STATES } from '../lib/outreach';
 import {
@@ -20,6 +20,7 @@ import { CompareModal } from './Compare';
 import { PreflightSheet } from './Preflight';
 import { useStore } from '../store';
 import { CandidateSearch, NoQueryMatch, type ListFilter } from '../components/CandidateSearch';
+import { WeightScale } from '../components/SearchControls';
 
 const LIST_FILTERS: ListFilter[] = [
   { id: 'stale', label: 'Stale profiles', hint: 'Last updated over 18 months ago.' },
@@ -70,6 +71,11 @@ export function CandidatesScreen() {
   const activeCriteria = draftCriteria ?? criteria;
 
   const openId = params.get('c');
+
+  // Arms the demo's inbound event: something only "happens while you work" once
+  // there is work on screen.
+  const { noteCandidatesSeen } = store;
+  React.useEffect(() => { noteCandidatesSeen(); }, [noteCandidatesSeen]);
 
   /* ----------------------------- filtering ----------------------------- */
 
@@ -142,6 +148,8 @@ export function CandidatesScreen() {
   /* -------------------------- re-weight controls ------------------------- */
 
   const previewChange = draftCriteria ? bandChangeCount(pool, criteria, draftCriteria) : 0;
+  // Shares follow the draft, so the percentages move with the scale you are dragging.
+  const railShares = React.useMemo(() => weightShares(activeCriteria), [activeCriteria]);
 
   const commitCriteria = (next: Criterion[]) => {
     // Capture movement before the list re-sorts.
@@ -165,9 +173,9 @@ export function CandidatesScreen() {
     });
   };
 
-  const adjust = (id: string, delta: number) => {
+  const setWeight = (id: string, weight: number) => {
     const base = draftCriteria ?? criteria;
-    setDraftCriteria(base.map((c) => (c.id === id ? { ...c, weight: Math.max(1, Math.min(5, c.weight + delta)) } : c)));
+    setDraftCriteria(base.map((c) => (c.id === id ? { ...c, weight } : c)));
   };
 
   const toggleType = (id: string) => {
@@ -179,20 +187,37 @@ export function CandidatesScreen() {
 
   /* -------------------------------- render ------------------------------- */
 
+  // Outreach acts on the shortlist, so it lives with the shortlist — not in the
+  // header, where it was permanently present and usually not the next thing to do.
+  // It is docked to the foot of the list column rather than floating over it,
+  // and it yields that slot to the bulk bar the moment rows are selected.
+  //
+  // It shows on All as well as Shortlist: shortlisting happens on All, via the
+  // bookmark at the end of each row, so this is where the shortlist gets built
+  // and where it should be actionable. It cannot nag — it does not exist until
+  // something is in the shortlist. Passed is a different frame; not there.
+  const shortlisted = React.useMemo(
+    () => candidates.filter((c) => shortlist.has(c.id)),
+    [candidates, shortlist],
+  );
+  const showOutreach = view !== 'passed' && shortlisted.length > 0 && selected.size === 0;
+  /* The tray used to vanish mid-frame — the list snapped up under the cursor,
+     and the handover to the bulk bar read as two unrelated things. Leaving is
+     now a state it passes through. */
+  const tray = useExit(showOutreach);
+  /* While it leaves, the shortlist behind it may already be empty — the tray
+     names people, so it keeps the last list it had rather than reading one
+     that no longer exists. */
+  const trayPeople = React.useRef(shortlisted);
+  if (shortlisted.length) trayPeople.current = shortlisted;
+  // Only overlay while the bulk bar is claiming the same slot; leaving because
+  // the shortlist emptied should hold its place so the list settles after it.
+  const trayOverlays = tray.leaving && selected.size > 0;
+
   const headerActions = (
-    <>
-      <Button size="sm" variant="secondary" color="altBrand" icon={<PencilSimple size={14} />} onClick={() => navigate('/search')}>
-        Edit search
-      </Button>
-      <Button
-        size="sm"
-        icon={<PaperPlaneTilt size={14} />}
-        disabled={shortlist.size === 0}
-        onClick={() => setPreflightOpen(true)}
-      >
-        Start outreach{shortlist.size > 0 && ` (${shortlist.size})`}
-      </Button>
-    </>
+    <Button size="sm" variant="secondary" color="altBrand" icon={<PencilSimple size={14} />} onClick={() => navigate('/search')}>
+      Edit search
+    </Button>
   );
 
   return (
@@ -210,8 +235,8 @@ export function CandidatesScreen() {
               { id: 'passed', label: 'Passed', count: counts.passed },
             ]}
           />
-          <div className="text-xs text-[var(--fg2)] flex items-center gap-1.5">
-            <Sparkle size={12} weight="fill" className="text-[var(--ai-magic-text)]" />
+          <div className="text-xs text-[var(--fg3)] flex items-center gap-1.5 min-w-0 truncate">
+            <Sparkle size={12} weight="fill" className="text-[var(--ai-magic-text)] shrink-0" />
             {store.searchPhase === 'draft'
               ? 'No search has been run yet'
               : store.searchPhase === 'running'
@@ -248,7 +273,7 @@ export function CandidatesScreen() {
               { id: 'internal', label: 'Internal talent', count: counts.internal },
             ]}
           />
-          <div className="ml-auto flex items-center gap-1.5 flex-wrap py-1.5">
+          <div className="ml-auto flex items-center gap-2 py-1.5">
             <CandidateSearch
               resultCount={ranked.length}
               filters={LIST_FILTERS}
@@ -258,32 +283,35 @@ export function CandidatesScreen() {
               })}
               onClearFilters={() => setChips(new Set())}
             />
-            <div className="w-px h-5 bg-[var(--beige-400)] mx-1" />
-            <label className="flex items-center gap-1.5 text-xs text-[var(--fg2)]">
+            <div className="w-px h-5 bg-[var(--beige-400)]" />
+            <label className={cx(
+              'flex items-center gap-1.5 h-8 px-2.5 rounded-md border border-transparent text-xs text-[var(--fg2)]',
+              'transition-colors duration-150 hover:border-[var(--beige-500)] hover:bg-white',
+              'focus-within:border-[var(--focus-border)] focus-within:bg-white focus-within:shadow-focus',
+            )}>
               <CaretUpDown size={13} className="text-[var(--fg3)]" />
               <select
                 aria-label="Sort candidates by"
                 value={sort}
                 onChange={(e) => setSort(e.target.value as Sort)}
-                className="bg-transparent text-xs text-[var(--fg1)] font-medium outline-none cursor-pointer"
+                className="bg-transparent text-xs text-[var(--fg1)] font-medium outline-none cursor-pointer focus-visible:shadow-none"
               >
                 <option value="score">Score</option>
                 <option value="recent">Recently active</option>
                 <option value="coverage">Coverage</option>
               </select>
             </label>
-            <span className="w-px h-5 bg-[var(--beige-400)] mx-1" />
             {/* Sliders reads as "filters" everywhere else in software, so the
                 scorecard gets its own mark rather than competing with the funnel. */}
             <button
               onClick={() => setRailOpen((o) => !o)}
               aria-pressed={railOpen}
               className={cx(
-                'flex items-center gap-1.5 h-7 px-2.5 rounded-md border text-xs font-medium cursor-pointer',
-                'transition-colors duration-150',
+                'flex items-center gap-1.5 h-8 px-2.5 rounded-md border text-xs font-medium cursor-pointer',
+                'transition-colors duration-150 active:bg-[var(--beige-200)]',
                 railOpen
-                  ? 'bg-[var(--success-bg-subtle)] border-[var(--brand-primary)] text-[var(--success-text)]'
-                  : 'bg-white border-[var(--beige-500)] text-[var(--fg2)] hover:border-[var(--focus-border)]',
+                  ? 'bg-[var(--success-bg-subtle)] border-[var(--brand-primary)] text-[var(--success-text)] hover:bg-[var(--green-200)]'
+                  : 'bg-white border-[var(--beige-500)] text-[var(--fg2)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-50)]',
               )}
             >
               <Ranking size={14} weight={railOpen ? 'bold' : 'regular'} />
@@ -294,7 +322,8 @@ export function CandidatesScreen() {
 
         {/* Main + rail */}
         <div className="flex-1 min-h-0 flex">
-          <div className="flex-1 min-w-0 overflow-y-auto" data-usage="score">
+          <div className="relative flex-1 min-w-0 flex flex-col">
+          <div className="flex-1 min-h-0 overflow-y-auto" data-usage="score">
             {forced === 'ats-disconnected' && atsBanner && (
               <div className="px-5 pt-3">
                 <Banner
@@ -353,6 +382,25 @@ export function CandidatesScreen() {
             />
           </div>
 
+          {/* Docked to the foot of the list column, not floating over it: the
+              scroller ends where the tray begins, so the last row is reachable
+              without a scrim or bottom padding compensating for an overlay.
+              It shows the shortlist rather than asserting a number, which is
+              what earns it the space on the All tab too. */}
+          {tray.render && (
+            <div className={cx(trayOverlays && 'absolute inset-x-0 bottom-0 z-10')}>
+              <ShortlistTray
+                people={shortlisted.length ? shortlisted : trayPeople.current}
+                leaving={tray.leaving}
+                // Committing hands the decision to the Preflight sheet; the tray
+                // settles back rather than sitting at full strength behind it.
+                dimmed={preflightOpen}
+                onStart={() => setPreflightOpen(true)}
+              />
+            </div>
+          )}
+          </div>
+
           {railOpen && (
             <aside aria-label="Ranking controls" data-usage="rail" className="w-[300px] shrink-0 border-l border-[var(--beige-300)] bg-[var(--beige-50)] overflow-y-auto">
               <div className="p-4">
@@ -384,17 +432,23 @@ export function CandidatesScreen() {
                           className={cx(
                             'text-[10px] uppercase tracking-[1px] font-bold px-1.5 py-1 rounded-xs cursor-pointer transition-colors',
                             c.type === 'required'
-                              ? 'bg-[var(--success-bg)] text-[var(--success-text)] hover:bg-[var(--green-300)]'
-                              : 'bg-[var(--beige-200)] text-[var(--fg2)] hover:bg-[var(--beige-300)]',
+                              ? 'bg-[var(--success-bg)] text-[var(--success-text)] hover:bg-[var(--green-300)] active:bg-[var(--green-400)]'
+                              : 'bg-[var(--beige-200)] text-[var(--fg2)] hover:bg-[var(--beige-300)] active:bg-[var(--beige-400)]',
                           )}
                           title="Toggle required / preferred"
                         >
                           {c.type}
                         </button>
-                        <div className="ml-auto flex items-center gap-1">
-                          <IconButton icon={<Minus size={12} />} onClick={() => adjust(c.id, -1)} title="Decrease weight" className="size-6" />
-                          <span className="w-6 text-center text-sm font-bold tabular-nums text-[var(--fg1)]">{c.weight}</span>
-                          <IconButton icon={<Plus size={12} />} onClick={() => adjust(c.id, 1)} title="Increase weight" className="size-6" />
+                        {/* A level scale, not ±1: the question here is how much
+                            this criterion matters against the other five. */}
+                        <div className="ml-auto">
+                          <WeightScale
+                            name={c.name}
+                            value={c.weight}
+                            share={railShares[c.id]}
+                            shareShort
+                            onChange={(n) => setWeight(c.id, n)}
+                          />
                         </div>
                       </div>
                     </div>
@@ -427,7 +481,8 @@ export function CandidatesScreen() {
               {selected.size} selected
               {selected.size > ranked.length && ` across ${Math.ceil(selected.size / 50)} pages`}
             </span>
-            <button onClick={() => setSelected(new Set())} className="text-xs text-[var(--beige-600)] hover:text-white cursor-pointer">
+            <button onClick={() => setSelected(new Set())}
+              className="text-xs text-[var(--beige-600)] rounded-xs px-1 py-0.5 hover:text-white active:text-[var(--beige-500)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white focus-visible:shadow-none">
               Clear
             </button>
             <div className="w-px h-5 bg-[var(--beige-930)]" />
@@ -438,7 +493,11 @@ export function CandidatesScreen() {
               { label: 'Mark as not a fit', run: () => { store.pass([...selected]); toast(`${selected.size} marked as not a fit`, { label: 'Undo', onClick: () => {} }); setSelected(new Set()); } },
             ].map((a) => (
               <button key={a.label} onClick={a.run}
-                className="text-sm px-2.5 py-1 rounded-sm hover:bg-[var(--beige-930)] cursor-pointer transition-colors">
+                className={cx(
+                  'text-sm px-2.5 py-1 rounded-sm cursor-pointer transition-colors',
+                  'hover:bg-[var(--beige-930)] active:bg-[var(--beige-900)]',
+                  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white focus-visible:shadow-none',
+                )}>
                 {a.label}
               </button>
             ))}
@@ -482,6 +541,119 @@ export function CandidatesScreen() {
       <ToastStack toasts={toasts} onDismiss={dismissToast} />
       <UsageOverlay screen="candidates" />
     </AppShell>
+  );
+}
+
+/* ------------------------------ Shortlist tray ----------------------------- */
+
+/**
+ * The terminal action of the product (shortlist -> outreach), docked to the
+ * foot of the list column.
+ *
+ * It is a row of the page, not an overlay: the scroller above it ends where it
+ * begins, so nothing runs underneath and the last candidate stays reachable
+ * with no scrim and no compensating bottom padding. It reports who is in the
+ * shortlist — faces, then names — and what pressing it starts, because a bare
+ * count told you the size of a thing you could not see.
+ */
+/** Each face steps further right than the one before it, so the stack opens. */
+const FAN = 'inline-flex transition-transform duration-150 ease-[var(--ease-out-quint)] '
+  + '[@media(hover:hover)]:group-hover:[transform:translateX(var(--fan))]';
+
+/**
+ * Keeps a thing mounted while it leaves.
+ *
+ * `render` outlives `show` by the length of the exit, and `leaving` says which
+ * of the two states it is in — enough for a fade-out without a library.
+ */
+function useExit(show: boolean, ms = 160) {
+  const [render, setRender] = React.useState(show);
+  const [leaving, setLeaving] = React.useState(false);
+
+  React.useEffect(() => {
+    if (show) { setRender(true); setLeaving(false); return; }
+    setLeaving(true);
+    const t = setTimeout(() => { setRender(false); setLeaving(false); }, ms);
+    return () => clearTimeout(t);
+  }, [show, ms]);
+
+  return { render, leaving };
+}
+
+function ShortlistTray({
+  people, onStart, leaving, dimmed,
+}: { people: Candidate[]; onStart: () => void; leaving?: boolean; dimmed?: boolean }) {
+  const n = people.length;
+  const shown = people.slice(0, 4);
+  const names = n === 1
+    ? people[0].name
+    : n === 2
+      ? `${people[0].name} and ${people[1].name}`
+      : `${people[0].name}, ${people[1].name} and ${n - 2} other${n - 2 === 1 ? '' : 's'}`;
+
+  return (
+    <div
+      className={cx(
+        'shrink-0 flex items-center gap-3 px-5 py-2.5',
+        'bg-[var(--bg2)] border-t border-[var(--beige-400)] shadow-[var(--shadow-md)]',
+        'transition-opacity duration-200 ease-[var(--ease-out-quint)]',
+        // Backwards fill, never both: a filled animation would leave this a
+        // permanent stacking context and trap the menus above it.
+        leaving
+          ? 'animate-[emaOut_160ms_var(--ease-out-quint)_forwards]'
+          : 'animate-[emaRise_240ms_var(--ease-out-quint)_backwards]',
+        dimmed && 'opacity-60',
+      )}
+    >
+      {/* Who, at a glance. Names carry the same information for screen
+          readers, so the stack itself stays decorative. */}
+      {/* The faces overlap by 6px; hovering separates them so each is legible.
+          Gated on a real hover pointer — on touch every tap would trigger it. */}
+      <div className="group flex shrink-0 pl-1.5" aria-hidden>
+        {shown.map((c, i) => (
+          <span key={c.id} className={cx(FAN, '-ml-1.5')} style={{ ['--fan' as string]: `${i * 2}px` }}>
+            <Avatar name={c.name} size={26} tone="beige" className="ring-2 ring-[var(--bg2)]" />
+          </span>
+        ))}
+        {n > shown.length && (
+          <span
+            className={cx(
+              FAN, '-ml-1.5 items-center justify-center size-[26px] rounded-full',
+              'ring-2 ring-[var(--bg2)] bg-[var(--beige-200)] text-[var(--fg2)] text-[10px] font-bold tabular-nums',
+            )}
+            style={{ ['--fan' as string]: `${shown.length * 2}px` }}
+          >
+            +{n - shown.length}
+          </span>
+        )}
+      </div>
+
+      <div className="min-w-0 flex-1">
+        {/* The count changes from the All tab and from the bulk bar too. */}
+        <div role="status" className="text-sm font-bold text-[var(--fg1)]">
+          {/* Re-keyed on the count, so a change replays the entrance on the
+              one word that changed. */}
+          <span key={n} className="inline-block tabular-nums animate-[emaPop_220ms_var(--ease-out-quint)_backwards]">
+            {n} shortlisted
+          </span>
+        </div>
+        <div className="text-xs text-[var(--fg2)] truncate">
+          {names} · 4-step sequence, drafts for your approval
+        </div>
+      </div>
+
+      <Button
+        size="md"
+        icon={<PaperPlaneTilt size={15} weight="fill" />}
+        onClick={onStart}
+        aria-label={`Start outreach with ${n} shortlisted candidate${n === 1 ? '' : 's'}`}
+        // The global focus halo is green and invisible against a green button;
+        // this is the same ring held off it by a white gap.
+        className="shrink-0 focus-visible:shadow-[0_0_0_2px_var(--bg2),0_0_0_4px_var(--brand-primary)]"
+      >
+        Start outreach
+      </Button>
+    </div>
   );
 }
 
@@ -593,13 +765,14 @@ function CandidateTable({
     <table className="w-full border-collapse table-fixed">
       <colgroup>
         <col style={{ width: 44 }} />
-        <col style={{ width: railOpen ? '30%' : '22%' }} />
-        <col style={{ width: railOpen ? '20%' : '14%' }} />
-        {!railOpen && <col style={{ width: '16%' }} />}
-        <col style={{ width: railOpen ? '34%' : '26%' }} />
-        <col style={{ width: 72 }} />
-        <col style={{ width: railOpen ? 130 : 150 }} />
-        <col style={{ width: 48 }} />
+        <col style={{ width: railOpen ? '23%' : '19%' }} />
+        <col style={{ width: railOpen ? '14%' : '12%' }} />
+        {!railOpen && <col style={{ width: '13%' }} />}
+        <col style={{ width: 118 }} />
+        {/* Assessment takes the slack: it is the only cell holding a sentence. */}
+        <col />
+        <col style={{ width: railOpen ? 150 : 164 }} />
+        <col style={{ width: 44 }} />
       </colgroup>
       <thead className="sticky top-0 z-10 bg-[var(--beige-50)]">
         <tr className="border-b border-[var(--beige-400)]">
@@ -607,10 +780,10 @@ function CandidateTable({
             <Checkbox checked={allSelected} onChange={onToggleAll} label="Select all" />
           </th>
           {(railOpen
-            ? ['Candidate', 'Company', 'Score', 'Signals', 'Outreach stage']
-            : ['Candidate', 'Company', 'Role', 'Score', 'Signals', 'Outreach stage']
+            ? ['Candidate', 'Company', 'Score', 'Assessment', 'Outreach stage']
+            : ['Candidate', 'Company', 'Role', 'Score', 'Assessment', 'Outreach stage']
           ).map((h) => (
-            <th key={h} className="py-2.5 pr-3 text-left text-xs font-bold uppercase tracking-[0.4px] text-[var(--fg3)]">
+            <th key={h} className="py-2 pr-3 text-left text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">
               {h}
             </th>
           ))}
@@ -625,21 +798,38 @@ function CandidateTable({
           return (
             <tr
               key={candidate.id}
+              tabIndex={0}
+              aria-label={`Open ${candidate.name}`}
               onClick={() => onOpen(candidate.id)}
-              className="border-b border-[var(--beige-200)] hover:bg-[var(--beige-100)] cursor-pointer transition-colors duration-150 group"
+              onKeyDown={(e) => {
+                // Enter and Space are what a row-as-button owes the keyboard.
+                if (e.key === 'Enter' || e.key === ' ') {
+                  if (e.target !== e.currentTarget) return;
+                  e.preventDefault();
+                  onOpen(candidate.id);
+                }
+              }}
+              className={cx(
+                'border-b border-[var(--beige-200)] cursor-pointer transition-colors duration-150 group',
+                'hover:bg-[var(--beige-100)] active:bg-[var(--beige-200)]',
+                // Chrome will not paint a ring around a table row, so focus is a
+                // tint plus an accent bar on the first cell.
+                'outline-none focus-visible:bg-[var(--beige-200)]',
+                'focus-visible:[&>td:first-child]:shadow-[inset_3px_0_0_var(--brand-primary)]',
+              )}
             >
-              <td className="pl-5 py-2.5 align-middle" onClick={(e) => e.stopPropagation()}>
+              <td className="pl-5 pt-4 pb-2.5 align-top" onClick={(e) => e.stopPropagation()}>
                 <Checkbox checked={selected.has(candidate.id)} onChange={() => onToggle(candidate.id)} label={`Select ${candidate.name}`} />
               </td>
 
-              <td className="py-2.5 pr-3 align-middle">
+              <td className="py-2.5 pr-3 align-top">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Avatar name={candidate.name} size={28} tone={candidate.avatarTone} />
                   <div className="min-w-0">
                     <div className="flex items-center gap-1.5">
                       <button
                         onClick={(e) => { e.stopPropagation(); onOpen(candidate.id); }}
-                        className="text-sm font-medium text-[var(--fg1)] truncate text-left hover:underline cursor-pointer"
+                        className="text-sm font-medium text-[var(--fg1)] truncate text-left rounded-xs hover:underline active:text-[var(--brand-primary)] cursor-pointer"
                       >
                         {candidate.name}
                       </button>
@@ -652,7 +842,7 @@ function CandidateTable({
                         </span>
                       )}
                     </div>
-                    <div className="text-xs text-[var(--fg3)] truncate flex items-center gap-1">
+                    <div className="text-xs leading-4 text-[var(--fg3)] truncate flex items-center gap-1">
                       {candidate.yearsExperience} yrs · {candidate.location}
                       {candidate.source === 'internal' && <Lock size={10} className="shrink-0" />}
                     </div>
@@ -660,53 +850,69 @@ function CandidateTable({
                 </div>
               </td>
 
-              <td className="py-2.5 pr-3 align-middle">
-                <div className="text-sm text-[var(--fg1)] truncate">{candidate.company}</div>
-                <div className="text-xs text-[var(--fg3)]">{candidate.companyTenure}</div>
+              <td className="py-2.5 pr-3 align-top">
+                <div className="text-sm leading-[18px] text-[var(--fg1)] truncate">{candidate.company}</div>
+                <div className="text-xs leading-4 text-[var(--fg3)] mt-0.5">{candidate.companyTenure}</div>
               </td>
 
               {!railOpen && (
-                <td className="py-2.5 pr-3 align-middle">
-                  <div className="text-sm text-[var(--fg2)] truncate">{candidate.title}</div>
+                <td className="py-2.5 pr-3 align-top">
+                  <div className="text-sm leading-[18px] text-[var(--fg2)] line-clamp-2">{candidate.title}</div>
                 </td>
               )}
 
-              <td className="py-2.5 pr-3 align-middle" onClick={(e) => e.stopPropagation()}>
-                <ScoreCell candidate={candidate} criteria={criteria} reason={reasonClause(candidate, criteria)} />
+              <td className="py-2.5 pr-3 align-top" onClick={(e) => e.stopPropagation()}>
+                <ScoreCell candidate={candidate} criteria={criteria} />
               </td>
 
-              <td className="py-2.5 pr-3 align-middle">
-                <div className="flex items-center gap-1">
-                  {candidate.signals.map((s: any) => {
-                    const Icon = (SIGNAL_ICON as any)[s.kind] ?? Clock;
-                    return (
-                      <Tooltip key={s.kind} content={<span className="text-xs">{s.detail ?? s.label}</span>} width={240}>
-                        <span className={cx(
-                          'inline-flex items-center justify-center size-5 rounded-xs',
-                          s.kind === 'current-employee' || s.kind === 'duplicate'
-                            ? 'text-[var(--blue-930)] bg-[var(--info-bg-subtle)]'
-                            : 'text-[var(--warning-text)] bg-[var(--warning-bg-subtle)]',
-                        )}>
-                          <Icon size={12} weight="bold" />
-                        </span>
-                      </Tooltip>
-                    );
-                  })}
+              {/* Signals ride with the sentence they qualify: two sparse columns
+                  read as a hole in the table, one dense column reads as a row. */}
+              <td className="py-2.5 pr-3 align-top">
+                <div className="flex items-start gap-1.5 min-w-0">
+                  {candidate.signals.length > 0 && (
+                    <span className="flex items-center gap-1 shrink-0 pt-px">
+                      {candidate.signals.map((s: any) => {
+                        const Icon = (SIGNAL_ICON as any)[s.kind] ?? Clock;
+                        return (
+                          <Tooltip key={s.kind} content={<span className="text-xs">{s.detail ?? s.label}</span>} width={240}>
+                            <span className={cx(
+                              'inline-flex items-center justify-center size-[18px] rounded-xs',
+                              s.kind === 'current-employee' || s.kind === 'duplicate'
+                                ? 'text-[var(--blue-930)] bg-[var(--info-bg-subtle)]'
+                                : 'text-[var(--warning-text)] bg-[var(--warning-bg-subtle)]',
+                            )}>
+                              <Icon size={11} weight="bold" />
+                            </span>
+                          </Tooltip>
+                        );
+                      })}
+                    </span>
+                  )}
+                  <span className={cx(
+                    'text-xs leading-[17px] line-clamp-2 min-w-0',
+                    ranking.gateFailed && !ranking.gateOverridden ? 'text-[var(--error-text)]' : 'text-[var(--fg2)]',
+                  )}>
+                    {reasonClause(candidate, criteria)}
+                  </span>
                 </div>
               </td>
 
-              <td className="py-2.5 pr-3 align-middle">
+              <td className="py-2.5 pr-3 align-top">
                 {rec
                   ? <Badge variant={STATES[rec.state as OutreachState].tone as any} size="sm">{STATES[rec.state as OutreachState].label}</Badge>
-                  : <span className="text-xs text-[var(--fg3)]">Not contacted</span>}
+                  : <span className="text-xs leading-[18px] text-[var(--fg3)] inline-block">Not contacted</span>}
               </td>
 
-              <td className="pr-5 py-2.5 align-middle" onClick={(e) => e.stopPropagation()}>
+              <td className="pr-5 py-2.5 align-top" onClick={(e) => e.stopPropagation()}>
                 <IconButton
                   icon={<BookmarkSimple size={15} weight={isShort ? 'fill' : 'regular'} />}
                   onClick={() => onShortlist(candidate.id)}
                   title={isShort ? 'Remove from shortlist' : 'Shortlist'}
-                  className={cx(isShort ? 'text-[var(--brand-primary)]' : 'opacity-0 group-hover:opacity-100 focus:opacity-100')}
+                  className={cx(
+                    isShort
+                      ? 'text-[var(--brand-primary)] hover:text-[var(--brand-primary-accent)]'
+                      : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100',
+                  )}
                 />
               </td>
             </tr>

@@ -12,6 +12,7 @@ import { type ActionId } from '../lib/outreach';
 import { SequenceEditor, DraftEditor } from '../components/SequenceEditor';
 import { ConfirmReschedule } from '../components/ConfirmReschedule';
 import { useStore } from '../store';
+import { useFocusTarget } from '../lib/useFocusTarget';
 import { UsageOverlay } from './LayoutPicker';
 
 /**
@@ -67,6 +68,12 @@ export function OutreachBoard() {
   const [openCard, setOpenCard] = React.useState<string | null>(null);
 
   const NEEDS_INPUT: ActionId[] = ['read-and-classify', 'review-and-send'];
+
+  // The board has no selection, so a notification opens the thing it is about.
+  useFocusTarget((id, movedCall) => {
+    if (movedCall) setConfirmFor(id);
+    else setOpenCard(id);
+  });
 
   // Cards do not drag, but they must still act — dropping the action is a
   // different failure from the one this layout exists to demonstrate.

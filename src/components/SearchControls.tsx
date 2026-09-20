@@ -1,8 +1,9 @@
 import React from 'react';
-import { CaretDown, Check, X, DotsSixVertical, Sparkle, Warning } from '@phosphor-icons/react';
+import { CaretDown, Check, X, DotsSixVertical, Sparkle, Warning, Plus } from '@phosphor-icons/react';
 import type { Criterion } from '../lib/types';
 import type { FilterMode } from '../data/search';
-import { IconButton, InfoPopover, cx } from './ui';
+import { Button, IconButton, InfoPopover, Input, cx } from './ui';
+import { weightShares } from '../lib/scoring';
 
 /**
  * Shared search controls.
@@ -43,31 +44,47 @@ export function ModePicker({
   value, onChange, name, compact,
 }: { value: FilterMode; onChange: (m: FilterMode) => void; name: string; compact?: boolean }) {
   const [open, setOpen] = React.useState(false);
+
+  // Every other popover in the app closes on Escape; this one used to hold you
+  // until you found somewhere harmless to click.
+  React.useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false); } };
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
+  }, [open]);
+
   return (
     <span className="relative shrink-0">
       <button
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
         aria-label={`${name}: ${MODE_COPY[value].label}. Change`}
+        aria-expanded={open}
+        aria-haspopup="menu"
         className={cx(
           'inline-flex items-center gap-1 h-6 rounded-sm border text-xs font-medium cursor-pointer transition-colors',
           compact
-            ? 'px-1.5 border-[var(--beige-500)] bg-white text-[var(--fg2)] hover:border-[var(--focus-border)]'
-            : 'pl-2 pr-1.5 border-current/25 bg-white/60 hover:bg-white/90',
+            ? cx('px-2', MODE_CHIP[value], 'hover:brightness-[0.97] active:brightness-95')
+            : 'pl-2 pr-1.5 border-current/25 bg-white/60 hover:bg-white/90 active:bg-white',
+          // Open has to look different from hover, or the menu reads as detached.
+          open && (compact ? 'ring-2 ring-[var(--focus-ring)]' : 'border-current/50 bg-white'),
         )}
       >
         {MODE_COPY[value].label}
-        <CaretDown size={9} weight="bold" className="opacity-60" />
+        <CaretDown size={9} weight="bold" className={cx('opacity-60 transition-transform duration-150', open && 'rotate-180')} />
       </button>
       {open && (
         <>
           <span className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <span className="absolute left-0 top-full mt-1 z-50 w-[248px] bg-white border border-[var(--beige-400)] rounded-lg shadow-[var(--shadow-md)] p-1 block animate-[emaIn_150ms_var(--ease-out-quint)]">
+          <span role="menu" className="absolute left-0 top-full mt-1 z-50 w-[248px] bg-white border border-[var(--beige-400)] rounded-lg shadow-[var(--shadow-md)] p-1 block animate-[emaIn_150ms_var(--ease-out-quint)]">
             {MODES.map((m) => (
               <button
                 key={m}
+                role="menuitemradio"
+                aria-checked={m === value}
                 onClick={() => { onChange(m); setOpen(false); }}
                 className={cx(
-                  'w-full text-left px-2 py-1.5 rounded-sm cursor-pointer transition-colors block',
+                  'w-full text-left px-2 py-1.5 rounded-sm cursor-pointer transition-colors block active:bg-[var(--beige-300)]',
                   m === value ? 'bg-[var(--beige-100)]' : 'hover:bg-[var(--beige-100)]',
                 )}
               >
@@ -210,8 +227,12 @@ export function FilterLegend({ className }: { className?: string }) {
  * says what the criterion actually controls.
  */
 export function WeightScale({
-  value, onChange, share, name,
-}: { value: number; onChange: (n: number) => void; /** Whole percent, already apportioned to sum to 100. */ share?: number; name: string }) {
+  value, onChange, share, name, shareShort,
+}: {
+  value: number; onChange: (n: number) => void;
+  /** Whole percent, already apportioned to sum to 100. */ share?: number; name: string;
+  /** Drops "of the score" where the rail is too narrow to carry it. */ shareShort?: boolean;
+}) {
   return (
     <div className="flex items-center gap-2.5">
       <div
@@ -238,24 +259,30 @@ export function WeightScale({
             className={cx(
               'h-5 w-[13px] rounded-xs cursor-pointer transition-colors duration-150',
               n <= value
-                ? 'bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-accent)]'
-                : 'bg-[var(--beige-300)] hover:bg-[var(--beige-500)]',
+                ? 'bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-accent)] active:bg-[var(--brand-primary-active)]'
+                : 'bg-[var(--beige-300)] hover:bg-[var(--beige-500)] active:bg-[var(--beige-600)]',
             )}
           />
         ))}
       </div>
       {share !== undefined && (
         <span className="text-xs text-[var(--fg3)] tabular-nums whitespace-nowrap">
-          {share}% of the score
+          {share}{shareShort ? '%' : '% of the score'}
         </span>
       )}
     </div>
   );
 }
 
+const STEPPER = 'size-6 rounded-xs border border-[var(--beige-500)] bg-white text-[var(--fg2)] '
+  + 'transition-colors duration-150 cursor-pointer '
+  + 'hover:border-[var(--focus-border)] hover:bg-[var(--beige-50)] active:bg-[var(--beige-200)]';
+/** At 1 and at 5 the button does nothing, so it stops offering. */
+const STEPPER_OFF = 'opacity-40 cursor-not-allowed hover:border-[var(--beige-500)] hover:bg-white active:bg-white';
+
 /** One editable scorecard criterion: type toggle, weight control, remove. */
 export function ScorecardRow({
-  criterion, onChange, onRemove, compact, weightControl = 'stepper', share,
+  criterion, onChange, onRemove, compact, weightControl = 'stepper', share, pending, note,
 }: {
   criterion: Criterion;
   onChange: (next: Criterion) => void;
@@ -264,10 +291,20 @@ export function ScorecardRow({
   /** A layout may choose a different control; it may not remove the ability to weight. */
   weightControl?: 'stepper' | 'scale';
   share?: number;
+  /**
+   * Ema has the criterion but has not settled its type or weight yet. The
+   * placeholders are the same size as the controls they stand in for, so the
+   * row does not reflow when the verdict lands.
+   */
+  pending?: boolean;
+  /** A qualifier on the name — where it came from, or that nothing did. */
+  note?: React.ReactNode;
 }) {
   const c = criterion;
 
-  if (weightControl === 'scale') {
+  // The scale gets its own card shape at full size; compact keeps the row and
+  // swaps only the control.
+  if (weightControl === 'scale' && !compact) {
     return (
       <div className="rounded-lg border border-[var(--beige-400)] bg-[var(--beige-50)] p-3">
         <div className="flex items-start gap-2.5">
@@ -285,8 +322,8 @@ export function ScorecardRow({
             className={cx(
               'shrink-0 text-[10px] uppercase tracking-[1px] font-bold px-2 py-1 rounded-xs cursor-pointer transition-colors',
               c.type === 'required'
-                ? 'bg-[var(--success-bg)] text-[var(--success-text)] hover:bg-[var(--green-300)]'
-                : 'bg-[var(--beige-200)] text-[var(--fg2)] hover:bg-[var(--beige-300)]',
+                ? 'bg-[var(--success-bg)] border border-[var(--success-border)] text-[var(--success-text)] hover:bg-[var(--green-300)] active:bg-[var(--green-400)]'
+                : 'bg-[var(--beige-200)] border border-[var(--beige-500)] text-[var(--fg2)] hover:bg-[var(--beige-300)] active:bg-[var(--beige-400)]',
             )}
           >
             {c.type}
@@ -309,41 +346,69 @@ export function ScorecardRow({
   }
 
   return (
+    // Compact wraps: in a 360px rail a long criterion name and four controls on
+    // one line squeeze the stepper, so the name takes the first line alone.
     <div className={cx(
-      'flex items-start gap-2.5 rounded-lg border border-[var(--beige-400)] bg-[var(--beige-50)]',
-      compact ? 'p-2' : 'p-2.5',
+      'flex rounded-lg border border-[var(--beige-400)] bg-[var(--beige-50)]',
+      compact ? 'flex-wrap items-center gap-x-2 gap-y-1.5 p-2' : 'items-start gap-2.5 p-2.5',
     )}>
       {!compact && <DotsSixVertical size={15} className="text-[var(--beige-700)] shrink-0 mt-1 cursor-grab" />}
-      <div className="flex-1 min-w-0">
-        <div className="text-sm font-medium text-[var(--fg1)] leading-[18px]">{c.name}</div>
+      <div className={cx('min-w-0', compact ? 'basis-full' : 'flex-1')}>
+        <div className="text-sm font-medium text-[var(--fg1)] leading-[18px]">
+          {c.name}{note}
+        </div>
         {!compact && <div className="text-xs text-[var(--fg3)] mt-0.5">Bar for a 5: {c.bar}</div>}
       </div>
+      {pending ? (
+        <span className="ema-skeleton shrink-0 h-[22px] w-[72px] rounded-xs" aria-hidden />
+      ) : (
       <button
         onClick={() => onChange({ ...c, type: c.type === 'required' ? 'preferred' : 'required' })}
         aria-label={`${c.name} is ${c.type}. Toggle required or preferred`}
         title="Toggle required / preferred"
         className={cx(
           'shrink-0 text-[10px] uppercase tracking-[1px] font-bold px-2 py-1 rounded-xs cursor-pointer transition-colors',
+          'animate-[emaPop_160ms_var(--ease-out-quint)_both]',
           c.type === 'required'
-            ? 'bg-[var(--success-bg)] text-[var(--success-text)] hover:bg-[var(--green-300)]'
-            : 'bg-[var(--beige-200)] text-[var(--fg2)] hover:bg-[var(--beige-300)]',
+            ? 'bg-[var(--success-bg)] border border-[var(--success-border)] text-[var(--success-text)] hover:bg-[var(--green-300)] active:bg-[var(--green-400)]'
+            : 'bg-[var(--beige-200)] border border-[var(--beige-500)] text-[var(--fg2)] hover:bg-[var(--beige-300)] active:bg-[var(--beige-400)]',
         )}
       >
         {c.type}
       </button>
-      <div className="flex items-center gap-1 shrink-0">
+      )}
+      {/* A level scale reads as "how much does this matter", which is the
+          question; a stepper reads as a number to nudge. Layouts choose. */}
+      {weightControl === 'scale' ? (
+        <div className={cx('shrink-0', compact && 'ml-auto')}>
+          {pending ? (
+            <span className="flex items-center gap-2.5" aria-hidden>
+              <span className="ema-skeleton h-5 w-[81px] rounded-xs" />
+              <span className="ema-skeleton h-3 w-[86px] rounded-xs" />
+            </span>
+          ) : (
+            <span className="block animate-[emaPop_160ms_var(--ease-out-quint)_both]">
+              <WeightScale name={c.name} value={c.weight} share={share} onChange={(n) => onChange({ ...c, weight: n })} />
+            </span>
+          )}
+        </div>
+      ) : (
+      <div className={cx('flex items-center gap-1 shrink-0', compact && 'ml-auto')}>
         <button
           onClick={() => onChange({ ...c, weight: Math.max(1, c.weight - 1) })}
+          disabled={c.weight <= 1}
           aria-label={`Decrease weight for ${c.name}`}
-          className="size-6 rounded-xs border border-[var(--beige-500)] bg-white text-[var(--fg2)] hover:border-[var(--focus-border)] cursor-pointer"
+          className={cx(STEPPER, c.weight <= 1 && STEPPER_OFF)}
         >−</button>
         <span className="w-5 text-center text-sm font-bold tabular-nums text-[var(--fg1)]">{c.weight}</span>
         <button
           onClick={() => onChange({ ...c, weight: Math.min(5, c.weight + 1) })}
+          disabled={c.weight >= 5}
           aria-label={`Increase weight for ${c.name}`}
-          className="size-6 rounded-xs border border-[var(--beige-500)] bg-white text-[var(--fg2)] hover:border-[var(--focus-border)] cursor-pointer"
+          className={cx(STEPPER, c.weight >= 5 && STEPPER_OFF)}
         >+</button>
       </div>
+      )}
       {onRemove && (
         <IconButton icon={<X size={12} />} className="size-6 shrink-0" onClick={onRemove} title={`Remove ${c.name}`} />
       )}
@@ -354,4 +419,177 @@ export function ScorecardRow({
 /** The Ema-suggested marker, used wherever a parsed value is shown unconfirmed. */
 export function SuggestedMark() {
   return <Sparkle size={11} weight="fill" className="text-[var(--ai-magic-text)] shrink-0" />;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Manual additions                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Add a filter by hand.
+ *
+ * Ema reads most of these out of the role description, but the recruiter knows
+ * things the description does not say. Both layouts that show filters get the
+ * same affordance, from here, so neither can quietly lose it.
+ */
+export function AddFilter({
+  categories, onAdd, className,
+}: { categories: readonly string[]; onAdd: (category: string, value: string) => void; className?: string }) {
+  const [draft, setDraft] = React.useState<{ category: string; value: string } | null>(null);
+
+  const commit = () => {
+    if (!draft?.value.trim()) return;
+    onAdd(draft.category, draft.value.trim());
+    setDraft(null);
+  };
+
+  if (!draft) {
+    return (
+      <Button size="sm" variant="ghost" color="altBrand" icon={<Plus size={13} />} className={className}
+        onClick={() => setDraft({ category: categories[0] ?? 'Skills', value: '' })}>
+        Add filter
+      </Button>
+    );
+  }
+
+  return (
+    <div className={cx('p-2.5 rounded-lg border border-[var(--focus-border)] bg-white flex items-center gap-2 flex-wrap', className)}>
+      <select
+        value={draft.category}
+        onChange={(e) => setDraft({ ...draft, category: e.target.value })}
+        aria-label="Filter category"
+        className="h-8 px-2 rounded-sm border border-[var(--beige-500)] bg-white text-sm text-[var(--fg1)] outline-none cursor-pointer focus:border-[var(--focus-border)]"
+      >
+        {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+      </select>
+      <input
+        autoFocus
+        value={draft.value}
+        onChange={(e) => setDraft({ ...draft, value: e.target.value })}
+        onKeyDown={(e) => {
+          if (e.key === 'Escape') setDraft(null);
+          if (e.key === 'Enter') commit();
+        }}
+        placeholder="Value, e.g. Kubernetes"
+        className="flex-1 min-w-[160px] h-8 px-2 rounded-sm border border-[var(--beige-500)] bg-white text-sm text-[var(--fg1)] outline-none placeholder:text-[var(--fg3)] focus:border-[var(--focus-border)]"
+      />
+      <span className="text-xs text-[var(--fg3)]">Added as Preferred, so it will not shrink your pool.</span>
+      <Button size="sm" variant="ghost" color="altBrand" onClick={() => setDraft(null)}>Cancel</Button>
+      <Button size="sm" disabled={!draft.value.trim()} onClick={commit}>Add</Button>
+    </div>
+  );
+}
+
+/**
+ * Add a scorecard criterion by hand, with its type and weight set before it
+ * lands — and the share of the score it would take previewed while you decide,
+ * because "weight 3" means different things depending on what else is there.
+ */
+export function AddCriterion({
+  criteria, onAdd, className,
+}: { criteria: Criterion[]; onAdd: (c: Omit<Criterion, 'id'>) => void; className?: string }) {
+  const [draft, setDraft] = React.useState<Omit<Criterion, 'id'> | null>(null);
+
+  const share = React.useMemo(
+    () => draft && weightShares([...criteria, { ...draft, id: '__draft' }]).__draft,
+    [criteria, draft],
+  );
+
+  const commit = () => {
+    if (!draft?.name.trim()) return;
+    onAdd({
+      ...draft,
+      name: draft.name.trim(),
+      bar: draft.bar.trim() || 'Not set — Ema will infer a bar from the role',
+    });
+    setDraft(null);
+  };
+
+  if (!draft) {
+    return (
+      <Button size="sm" variant="ghost" color="altBrand" icon={<Plus size={13} />} className={className}
+        onClick={() => setDraft({ name: '', bar: '', type: 'preferred', weight: 2 })}>
+        Add criterion
+      </Button>
+    );
+  }
+
+  return (
+    <form
+      className={cx('rounded-lg border border-[var(--focus-border)] bg-white shadow-[var(--shadow-sm)]', className)}
+      onSubmit={(e) => { e.preventDefault(); commit(); }}
+      onKeyDown={(e) => { if (e.key === 'Escape') setDraft(null); }}
+    >
+      <div className="p-3 space-y-3">
+        <div className="text-sm font-medium text-[var(--fg1)]">New criterion</div>
+        <label className="block">
+          <span className="block text-xs font-medium text-[var(--fg2)] mb-1">What are you looking for?</span>
+          <Input
+            autoFocus
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+            placeholder="e.g. Streaming data pipelines"
+          />
+        </label>
+        <label className="block">
+          <span className="block text-xs font-medium text-[var(--fg2)] mb-1">
+            Bar for a 5 <span className="font-normal text-[var(--fg3)]">· optional</span>
+          </span>
+          <Input
+            value={draft.bar}
+            onChange={(e) => setDraft({ ...draft, bar: e.target.value })}
+            placeholder="e.g. Owned a Kafka or Flink pipeline at >1M events/sec"
+          />
+          <span className="block text-xs text-[var(--fg3)] mt-1">Leave blank and Ema infers a bar from the role.</span>
+        </label>
+        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-[var(--fg3)] w-[68px] shrink-0">Type</span>
+            <div role="radiogroup" aria-label="Criterion type"
+              className="inline-flex p-0.5 gap-0.5 bg-[var(--beige-100)] border border-[var(--beige-300)] rounded-sm">
+              {(['preferred', 'required'] as const).map((t) => (
+                <button key={t} type="button" role="radio" aria-checked={draft.type === t}
+                  onClick={() => setDraft({ ...draft, type: t, weight: t === 'required' ? 3 : 2 })}
+                  title={t === 'required'
+                    ? 'Required — scoring 1 or 2 here caps the candidate. Counts double.'
+                    : 'Preferred — shapes the ranking, never excludes.'}
+                  className={cx(
+                    'h-6 px-2.5 rounded-xs text-xs font-medium capitalize cursor-pointer transition-colors duration-150 border',
+                    draft.type === t
+                      ? 'bg-white text-[var(--fg1)] border-[var(--beige-300)] shadow-[var(--shadow-xs)]'
+                      : 'text-[var(--fg2)] border-transparent hover:text-[var(--fg1)]',
+                  )}>
+                  {t}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-[var(--fg3)] shrink-0">Importance</span>
+            <WeightScale
+              name={draft.name || 'new criterion'}
+              value={draft.weight}
+              share={share ?? undefined}
+              onChange={(n) => setDraft({ ...draft, weight: n })}
+            />
+          </div>
+        </div>
+      </div>
+      <div className="flex items-center gap-2 px-3 py-2.5 border-t border-[var(--beige-300)] bg-[var(--beige-50)] rounded-b-lg">
+        <span className="text-xs text-[var(--fg3)]">
+          {draft.type === 'required'
+            ? 'Scoring 1 or 2 here caps a candidate.'
+            : 'Shapes the ranking, never excludes anyone.'}
+        </span>
+        <div className="ml-auto flex items-center gap-1.5">
+          <Button type="button" size="sm" variant="ghost" color="altBrand" onClick={() => setDraft(null)}>
+            Cancel
+          </Button>
+          <Button type="submit" size="sm" icon={<Plus size={13} />} disabled={!draft.name.trim()}>
+            Add criterion
+          </Button>
+        </div>
+      </div>
+    </form>
+  );
 }

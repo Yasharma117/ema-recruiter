@@ -18,6 +18,34 @@ export const SEARCH = {
 };
 
 /**
+ * Where each filter and criterion came from in the brief — the exact words, so
+ * the configuring act can light them up as Ema writes the thing they produced.
+ *
+ * An id that is absent has no anchor in the text: Python, technical leadership
+ * and open-source work are Ema's inference from "ML engineer" and "Staff-level",
+ * not something the hiring manager wrote. Same convention as candidate
+ * evidence, where `inferred` is the kind with no quote — the absence is the
+ * point, and the UI says so rather than implying a source that is not there.
+ */
+export const BRIEF_SOURCE: Record<string, string> = {
+  // filters
+  f1: 'ML engineer',
+  f2: 'Staff-level',
+  f3: 'Bay Area',
+  f4: 'US remote',
+  f5: '7+ years',
+  f6: 'payments risk team',
+  f7: 'another regulated domain',
+  f8: 'run LLM or large model inference in production at real scale',
+  f10: 'Not looking for pure researchers',
+  // scorecard criteria
+  c_serving: 'inference in production at real scale',
+  c_seniority: 'Staff-level ML engineer',
+  c_regulated: 'Fintech or another regulated domain',
+  c_risk: 'payments risk team',
+};
+
+/**
  * Parsed from the brief by Ema, then editable. Filters narrow the pool;
  * the scorecard ranks whoever survives.
  */

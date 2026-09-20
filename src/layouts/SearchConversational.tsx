@@ -1,12 +1,21 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Sparkle, Check, MagnifyingGlass, PaperPlaneTilt } from '@phosphor-icons/react';
-import { SEARCH, FILTERS, type FilterChip, type FilterMode } from '../data/search';
-import { Avatar, Badge, Button, Card, Textarea, ToastStack, cx } from '../components/ui';
-import { ModePicker, ScorecardRow, ScorecardInfo, DerivedFrom, MODE_DOT } from '../components/SearchControls';
+import {
+  Sparkle, Check, MagnifyingGlass, PaperPlaneTilt, CaretDown, ArrowCounterClockwise, Plus,
+} from '@phosphor-icons/react';
+import {
+  SEARCH, FILTERS, FILTER_CATEGORIES, BRIEF_SOURCE, type FilterChip, type FilterMode,
+} from '../data/search';
+import { Button, Card, Textarea, ToastStack, cx } from '../components/ui';
+import {
+  ModePicker, ScorecardRow, ScorecardInfo, DerivedFrom, AddFilter, AddCriterion,
+  SuggestedMark, MODE_DOT, MODE_COPY,
+} from '../components/SearchControls';
 import { AppShell } from '../components/AppShell';
+import { weightShares } from '../lib/scoring';
 import { useStore } from '../store';
-import { UsageOverlay } from './LayoutPicker';
+import { UsageOverlay, useMode } from './LayoutPicker';
+import { Wash } from '../components/Wash';
 
 /**
  * Search · B — Conversational setup.
@@ -14,28 +23,77 @@ import { UsageOverlay } from './LayoutPicker';
  * Built on the block-vs-refine rule: **block on anything that changes who is in
  * the pool, refine anything that only changes the order.** So Ema asks two or
  * three questions — the ones where getting it wrong makes people invisible —
- * and infers everything else, with the configuration accreting visibly beside
- * the thread as a reviewable artifact rather than a hidden prompt.
+ * and infers everything else.
  *
- * Sacrifices fast revision: editing filter #7 means scrolling a thread.
+ * The screen earns its furniture in three acts, because a cold start that opens
+ * with an empty rail and a disabled button is asking you to read a UI before
+ * you have said anything:
+ *
+ *   1. cold        — the brief and the two blocking questions, together. No
+ *                    nav, no rail, nothing to review yet.
+ *   2. building    — eligibility is already settled when this act opens, so
+ *                    nothing competes with the work: Ema reads the brief back
+ *                    and writes the configuration across the full width.
+ *   3. ready       — the pass is over, so the nav returns, the brief folds into
+ *                    a bar that can replay how Ema got here, and the
+ *                    configuration stays under review.
+ *
+ * The questions sit in act 1 rather than beside the building configuration
+ * because they were the thing in the way: answered up front they cost one more
+ * glance at a screen you are already reading, and act 2 gets the whole width.
+ *
+ * Sacrifices fast revision: editing filter #7 means re-opening the thread.
  */
 
-type Step = { id: string; ask: string; why: string; options: string[]; chosen?: string };
+type Step = { id: string; ask: string; short: string; why: string; options: string[] };
 
 const BLOCKING: Step[] = [
   {
     id: 'seniority',
     ask: 'What level are you hiring at?',
+    short: 'a level',
     why: 'Getting this wrong excludes people rather than re-ordering them.',
     options: ['Staff or Principal', 'Senior', 'Any level'],
   },
   {
     id: 'location',
     ask: 'Where can they be based?',
+    short: 'a location',
     why: 'Location is a hard constraint — it decides eligibility, not ranking.',
     options: ['SF Bay Area or US remote', 'US only', 'Anywhere'],
   },
 ];
+
+/* This reveal is the one animation on the screen that is allowed to take its
+   time: it is seen once per search, and it is the moment Ema shows its work.
+   320ms of travel at 50ms apart reads as material settling; the 200ms version
+   read as a page reloading. Still capped, so row 16 does not wait on 15 others. */
+const STAGGER = 50;
+const STAGGER_CAP = 8;
+const REVEAL = 'animate-[emaReveal_320ms_var(--ease-out-quint)_both]';
+/* Leaving an act: the same 4px of travel the entrance uses, upward, faster.
+   Content lifts away instead of being deleted under the cursor. */
+const LEAVE = 'animate-[emaOut_120ms_var(--ease-out-quint)_both]';
+
+/* One decision lands every STEP, and a row's verdict resolves one step after
+   the row itself — so there is always exactly one item visibly being weighed.
+   Sixteen of them, plus a beat at the start for reading, comes to about 3s. */
+const STEP = 150;
+/** The pause before the first row: Ema is reading, not yet writing. */
+const READING_MS = 400;
+/** A name is written over this long, whatever its length. */
+const TYPE_MS = 120;
+/** The beat between the last verdict landing and act 2 handing over. */
+const SETTLE_MS = 400;
+
+/** Groups, in the order Ema settles them: what excludes, then what ranks. */
+const MODE_ORDER: FilterMode[] = ['must', 'preferred', 'exclude'];
+const delay = (i: number, base = 0) =>
+  ({ animationDelay: `${base + Math.min(i, STAGGER_CAP) * STAGGER}ms` });
+
+/** "a role description, a level and a location" */
+const sentenceList = (xs: string[]) =>
+  (xs.length < 2 ? xs.join('') : `${xs.slice(0, -1).join(', ')} and ${xs[xs.length - 1]}`);
 
 export function SearchConversational() {
   const navigate = useNavigate();
@@ -44,198 +102,562 @@ export function SearchConversational() {
 
   const [brief, setBrief] = React.useState(SEARCH.brief);
   const [sent, setSent] = React.useState(false);
+  /* Prefilled: the fastest way to show what a brief looks like is to put one
+     there. It is a textarea, so disagreeing with it costs one select-all. */
   const [draft, setDraft] = React.useState(SEARCH.brief);
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
   const [filters, setFilters] = React.useState<FilterChip[]>(FILTERS);
+  const [stepsOpen, setStepsOpen] = React.useState(false);
+  /** The brief has been handed over; the questions are on screen. */
+  const [briefIn, setBriefIn] = React.useState(false);
+  const mode = useMode();
+
+  /* Nobody asked for the theatre if they asked for less motion: there, every
+     decision is simply already made. The stylesheet also forces
+     animation-delay to 0, so a cascade would collapse into a flash anyway. */
+  const still = React.useRef(
+    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
+  ).current;
 
   const answered = BLOCKING.filter((s) => answers[s.id]).length;
   const ready = answered === BLOCKING.length;
-  const inferred = filters.filter((f) => f.mode !== 'must').length;
 
+  /* Both act changes replace the entire composition, and a straight swap costs
+     two things. The click that caused it never registers — you press the last
+     answer and the thread holding it is gone in the same frame — and the old
+     act is deleted rather than dismissed. One beat of exit buys both back, and
+     it is the only way to cross-fade two trees without a layout library. */
+  const [leaving, setLeaving] = React.useState(false);
+
+  /* Act 2 is driven by the pass, not by the answers. Both questions are
+     answered before Send now, so keying it on `ready` — as it was — would make
+     act 3 true in the same frame the brief lands and the building act would
+     never play. Only `send` switches `building` on, so nothing a user does in
+     act 3 can drop them back into a pass they have already watched. */
+  const [building, setBuilding] = React.useState(false);
+
+  const stage: 'cold' | 'configuring' | 'ready' = !sent ? 'cold' : building ? 'configuring' : 'ready';
+  /* The configuration is new information exactly once — in act 2, while Ema is
+     building it. In act 3 it is the same 16 rows in a new place, so they ride
+     in with their card instead of re-cascading in front of someone who has
+     already read them. */
+
+  const musts = filters.filter((f) => f.mode === 'must').length;
+  const inferred = filters.filter((f) => f.mode !== 'must').length;
+  const shares = React.useMemo(() => weightShares(store.criteria), [store.criteria]);
+
+  /* Deciding order is the final display order, so nothing moves while it runs:
+     the must-haves, then preferred, then exclude, then the criteria by share. */
+  const decidingOrder = React.useMemo(() => [
+    ...MODE_ORDER.flatMap((m) => filters.filter((f) => f.mode === m).map((f) => f.id)),
+    ...[...store.criteria].sort((a, b) => (shares[b.id] ?? 0) - (shares[a.id] ?? 0)).map((c) => c.id),
+    // Only the first pass matters; later edits re-sort but never re-decide.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [stage === 'configuring']);
+
+  const [landed, setLanded] = React.useState(0);
+  const total = decidingOrder.length;
+  // Latched: anything added after the pass is decided the moment it exists.
+  /* Only the configuring act performs the pass. Act 3 reviews a configuration
+     that has already been decided — and the counter resets on leaving, so
+     without this the cards would render empty there. */
+  const done = still || stage !== 'configuring' || landed > total;
+
+  React.useEffect(() => {
+    if (stage !== 'configuring') { setLanded(0); return; }
+    if (still || landed > total) return;
+    const t = setTimeout(() => setLanded((n) => n + 1), landed === 0 ? READING_MS : STEP);
+    return () => clearTimeout(t);
+  }, [stage, landed, total, still]);
+
+  /* The pass ends the act: one beat to read the last verdict, then the same
+     cross-fade every other act change uses. Nothing to press — the questions
+     were answered before any of this was on screen. */
+  React.useEffect(() => {
+    if (stage !== 'configuring' || !done) return;
+    const t1 = setTimeout(() => setLeaving(true), SETTLE_MS);
+    const t2 = setTimeout(() => { setBuilding(false); setLeaving(false); }, SETTLE_MS + 160);
+    return () => { clearTimeout(t1); clearTimeout(t2); };
+  }, [stage, done]);
+
+  /* Typing is a clock, not per-character state: the row being written asks how
+     far along it is and slices its own name. One timer for the whole pass. */
+  const [typed, setTyped] = React.useState(1);
+  React.useEffect(() => {
+    if (still || done || landed === 0) { setTyped(1); return; }
+    setTyped(0);
+    const started = Date.now();
+    const tick = setInterval(() => {
+      const t = Math.min(1, (Date.now() - started) / TYPE_MS);
+      setTyped(t);
+      if (t >= 1) clearInterval(tick);
+    }, 24);
+    return () => clearInterval(tick);
+  }, [landed, still, done]);
+
+  /** The name as far as it has been written. Finished rows render in full. */
+  const written = (id: string, name: string) => {
+    if (done || still || rank(id) < landed - 1) return name;
+    return name.slice(0, Math.max(1, Math.ceil(name.length * typed)));
+  };
+
+  /** The phrase in the brief that produced whatever is being written now. */
+  const readingNow = !done && !still && landed > 0
+    ? BRIEF_SOURCE[decidingOrder[landed - 1]] ?? null
+    : null;
+
+  /** Landed = the row is on screen. Resolved = its verdict is in. */
+  const rank = (id: string) => decidingOrder.indexOf(id);
+  const hasLanded = (id: string) => done || rank(id) < landed;
+  const hasResolved = (id: string) => done || rank(id) < landed - 1;
+
+  /* Act 1 is two beats, not one form. You write the role; Ema comes back with
+     the only two questions that decide who is eligible. Asking them up front,
+     beside the empty box, made it a form and made Ema look like it had not
+     read anything. */
+  const unanswered = BLOCKING.filter((b) => !answers[b.id]).map((b) => b.short);
+
+  /** First beat: hand Ema the brief. */
+  const submitBrief = () => {
+    if (!draft.trim() || leaving) return;
+    setBrief(draft.trim());
+    setBriefIn(true);
+  };
+  /** Second beat: the answers are in, so act 2 has everything it needs. */
+  const send = () => {
+    if (!draft.trim() || unanswered.length || leaving) return;
+    setBrief(draft.trim());
+    setLeaving(true);
+    /* Reduced motion has no pass to watch, so it never enters act 2. */
+    setTimeout(() => { setSent(true); setBuilding(!still); setLeaving(false); }, 120);
+  };
   const begin = () => { store.runSearch(); navigate('/candidates'); };
 
-  return (
-    <AppShell breadcrumbs={['Searches', SEARCH.name]} screen="search">
-      <div className="h-full flex">
-        {/* Thread */}
-        <div className="w-[560px] shrink-0 border-r border-[var(--beige-300)] overflow-y-auto">
-          <div className="p-5 space-y-4">
-            <div data-usage="role">
-              <Bubble from="ema">
-                What role are you hiring for? Describe it however you like — I only need to
-                ask about the things that decide who is eligible.
-              </Bubble>
-              {sent ? (
-                <>
-                  <Bubble from="you">{brief}</Bubble>
-                  <div className="flex justify-end mt-1">
-                    <button
-                      onClick={() => { setDraft(brief); setSent(false); }}
-                      className="text-xs text-[var(--fg3)] hover:text-[var(--fg1)] cursor-pointer"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <div className="mt-3">
+  const setMode = (id: string, mode: FilterMode) =>
+    setFilters((prev) => prev.map((f) => (f.id === id ? { ...f, mode, suggested: false } : f)));
+
+  /* ------------------------------ act 1: cold ----------------------------- */
+
+  if (stage === 'cold') {
+    return (
+      <AppShell chrome="hidden">
+        <div className="relative h-full overflow-y-auto bg-[var(--app-background)]">
+          <Wash />
+          <div className="relative z-10 min-h-full flex flex-col items-center justify-center px-6 py-10">
+            <div className={cx('w-full max-w-[620px]', leaving && LEAVE)} data-usage="role">
+              <div className="flex items-center gap-2.5 mb-5 animate-[emaIn_200ms_var(--ease-out-quint)_both]">
+                <img src="/logo-mark.svg" alt="" height={22} style={{ height: 22 }} />
+                <span className="text-sm text-[var(--fg3)]">New search</span>
+              </div>
+
+              <h1 className="text-[26px] leading-[32px] font-medium text-[var(--fg1)] animate-[emaRise_240ms_var(--ease-out-quint)_60ms_both]">
+                What role are you hiring for?
+              </h1>
+              {/* The lede explains what Ema is about to do. Once it has done it
+                  and is asking back, the explanation is in its own words. */}
+              {!briefIn && (
+                <p className="text-sm text-[var(--fg2)] mt-2 leading-[20px] animate-[emaRise_240ms_var(--ease-out-quint)_120ms_both]">
+                  Describe it however you like, or paste the job description. Ema only asks about
+                  the things that decide who is eligible — everything else it infers, and you can
+                  change all of it afterwards.
+                </p>
+              )}
+
+              {/* Beat one: the box, and nothing else to answer yet. */}
+              <div className="mt-5 animate-[emaRise_240ms_var(--ease-out-quint)_180ms_both]">
+                {briefIn ? (
+                  // Handed over. It stays readable, and stays editable — going
+                  // back is a click, not a restart.
+                  <Card className="px-3.5 py-3">
+                    <div className="flex items-baseline gap-2 mb-1">
+                      <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] flex-1">
+                        Your brief
+                      </span>
+                      <button
+                        onClick={() => setBriefIn(false)}
+                        className="text-xs text-[var(--fg3)] rounded-xs px-1.5 py-0.5 hover:text-[var(--fg1)] hover:bg-[var(--beige-100)] cursor-pointer transition-colors duration-150"
+                      >
+                        Edit
+                      </button>
+                    </div>
+                    <div className="text-sm text-[var(--fg2)] leading-[20px]">{draft.trim()}</div>
+                  </Card>
+                ) : (
                   <Textarea
                     autoFocus
                     value={draft}
                     onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && draft.trim()) {
-                        setBrief(draft.trim()); setSent(true);
-                      }
-                    }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitBrief(); }}
                     rows={5}
+                    className="text-[15px] leading-[22px] p-4"
                     placeholder="Staff ML engineer for payments risk. Needs production model serving at real scale, 7+ years, fintech preferred…"
                   />
-                  <div className="flex items-center gap-2 mt-2">
-                    <Button
-                      size="sm"
-                      icon={<PaperPlaneTilt size={13} />}
-                      disabled={!draft.trim()}
-                      onClick={() => { setBrief(draft.trim()); setSent(true); }}
-                    >
-                      Send
-                    </Button>
-                    <span className="text-xs text-[var(--fg3)]">⌘⏎ to send</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {sent && (
-              <div data-usage="filters">
-                <Bubble from="ema">
-                  Two things change <span className="font-medium">who is in the pool</span>, so I need you
-                  to confirm them. Everything else I inferred only affects the order, and you can
-                  change it any time.
-                </Bubble>
-
-                <div className="space-y-2.5 mt-3">
-                  {BLOCKING.map((step) => (
-                    <Card key={step.id} className="p-3">
-                      <div className="text-sm font-medium text-[var(--fg1)]">{step.ask}</div>
-                      <div className="text-xs text-[var(--fg3)] mt-0.5 mb-2">{step.why}</div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {step.options.map((o) => {
-                          const on = answers[step.id] === o;
-                          return (
-                            <button
-                              key={o}
-                              onClick={() => setAnswers((a) => ({ ...a, [step.id]: o }))}
-                              className={cx(
-                                'h-7 px-2.5 rounded-pill border text-xs font-medium cursor-pointer transition-colors duration-150',
-                                on
-                                  ? 'bg-[var(--brand-primary)] border-[var(--brand-primary)] text-[var(--brand-primary-foreground)]'
-                                  : 'bg-white border-[var(--beige-500)] text-[var(--fg2)] hover:border-[var(--focus-border)]',
-                              )}
-                            >
-                              {on && <Check size={10} weight="bold" className="inline mr-1" />}
-                              {o}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+                )}
               </div>
-            )}
 
-            {ready && (
-              <Bubble from="ema">
-                That is everything I need. I inferred <span className="font-medium">{inferred} more</span> signals
-                from your description — they shape the ranking, not eligibility. Review them on the
-                right, or just begin.
-              </Bubble>
-            )}
-          </div>
-        </div>
-
-        {/* The artifact, accreting as the thread progresses */}
-        <div className="flex-1 min-w-0 overflow-y-auto bg-[var(--beige-50)]">
-          <div className="p-5 space-y-3">
-            <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">
-              Live configuration
-            </div>
-
-            {/* Nothing exists until Ema has read the role. That is the whole point
-                of this layout, and showing a filled-in config beforehand broke it. */}
-            {!sent ? (
-              <Card className="p-6 text-center">
-                <Sparkle size={20} weight="fill" className="text-[var(--ai-magic-text)] mx-auto mb-2" />
-                <div className="text-sm font-medium text-[var(--fg1)]">Nothing here yet</div>
-                <div className="text-xs text-[var(--fg2)] mt-1 leading-[17px]">
-                  Describe the role on the left. Ema reads it and builds the filters and
-                  scorecard here, for you to review before anything runs.
+              {!briefIn ? (
+                <div className="mt-4 flex items-center gap-2.5 animate-[emaRise_240ms_var(--ease-out-quint)_240ms_both]">
+                  <Button icon={<PaperPlaneTilt size={14} />} disabled={!draft.trim()} onClick={submitBrief}>
+                    Send
+                  </Button>
+                  <span className="text-xs text-[var(--fg3)]">⌘⏎ to send</span>
+                  {/* The nav is gone in this act, so the way out cannot be in it. */}
+                  <button
+                    onClick={() => navigate(mode === 'variants' ? '/search' : '/')}
+                    className="ml-auto text-xs text-[var(--fg3)] rounded-xs px-1.5 py-1 hover:text-[var(--fg1)] hover:bg-[var(--beige-100)] cursor-pointer transition-colors duration-150"
+                  >
+                    {mode === 'variants' ? 'Prefer a form? Switch layout' : '← Overview'}
+                  </button>
                 </div>
-              </Card>
-            ) : (
-              <>
-                <Card className="p-3.5" data-usage="filters">
-                  <div className="flex items-baseline gap-2 mb-1">
-                    <span className="text-sm font-medium text-[var(--fg1)]">Filters</span>
+              ) : (
+                <>
+                  {/* Beat two: Ema answers, and asks for the only two things it
+                      cannot infer without excluding people by accident. */}
+                  <div className="mt-4">
+                    <Bubble from="ema">
+                      Read that. Two things change <span className="font-medium">who is in the pool</span>,
+                      so they are yours to confirm — everything else I can infer.
+                    </Bubble>
+                  </div>
+
+                  <div className="mt-3 space-y-2.5">
+                    {BLOCKING.map((step, i) => (
+                      <Card
+                        key={step.id}
+                        className="p-3 animate-[emaRise_240ms_var(--ease-out-quint)_backwards]"
+                        style={delay(i, 140)}
+                      >
+                        <div className="text-sm font-medium text-[var(--fg1)]">{step.ask}</div>
+                        <div className="text-xs text-[var(--fg3)] mt-0.5 mb-2">{step.why}</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {step.options.map((o) => (
+                            <Choice
+                              key={o}
+                              on={answers[step.id] === o}
+                              onClick={() => setAnswers((a) => ({ ...a, [step.id]: o }))}
+                            >
+                              {o}
+                            </Choice>
+                          ))}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-2.5">
+                    <Button
+                      icon={<MagnifyingGlass size={14} weight="bold" />}
+                      disabled={unanswered.length > 0}
+                      onClick={send}
+                    >
+                      Build the search
+                    </Button>
                     <span className="text-xs text-[var(--fg3)]">
-                      {filters.filter((f) => f.mode === 'must').length} must-have
+                      {unanswered.length ? `Pick ${sentenceList(unanswered)}` : 'Ema builds the filters and scorecard next'}
                     </span>
                   </div>
-                  <div className="mb-2"><DerivedFrom /></div>
-                  <div className="space-y-1.5">
-                    {filters.map((f) => (
-                      <div key={f.id} className="flex items-center gap-2">
-                        <span className={cx('size-2 rounded-full shrink-0', MODE_DOT[f.mode])} />
-                        <span className="text-sm text-[var(--fg1)] truncate flex-1">{f.value}</span>
-                        <ModePicker
-                          compact
-                          value={f.mode}
-                          name={f.value}
-                          onChange={(m) => setFilters((prev) => prev.map((x) => (x.id === f.id ? { ...x, mode: m, suggested: false } : x)))}
-                        />
-                      </div>
-                    ))}
-                  </div>
-                </Card>
-
-                <Card className="p-3.5" data-usage="scorecard">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-sm font-medium text-[var(--fg1)]">Scorecard</span>
-                    <ScorecardInfo />
-                    <span className="text-xs text-[var(--fg3)]">{store.criteria.length} criteria</span>
-                  </div>
-                  <div className="mb-2"><DerivedFrom /></div>
-                  <div className="space-y-1.5">
-                    {store.criteria.map((c) => (
-                      <ScorecardRow
-                        key={c.id}
-                        compact
-                        criterion={c}
-                        onChange={(next) => store.setCriteria(store.criteria.map((x) => (x.id === c.id ? next : x)))}
-                      />
-                    ))}
-                  </div>
-                </Card>
-
-                <Card className="p-3.5" data-usage="reach">
-                  <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] mb-1.5">Reach</div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-xl font-bold text-[var(--fg1)] tabular-nums">≈ 1,180</span>
-                    <span className="text-sm text-[var(--fg2)]">profiles</span>
-                  </div>
-                </Card>
-              </>
-            )}
-
-            <Button size="lg" block disabled={!ready} icon={<MagnifyingGlass size={16} weight="bold" />} onClick={begin}>
-              Begin search
-            </Button>
-            <div className="text-xs text-[var(--fg3)] text-center">
-              {!sent ? 'Describe the role to begin'
-                : ready ? 'About 2 minutes'
-                : `Answer ${BLOCKING.length - answered} more to begin`}
+                </>
+              )}
             </div>
+          </div>
+        </div>
+        <ToastStack toasts={toasts} onDismiss={dismissToast} />
+      </AppShell>
+    );
+  }
+
+  /* ------------------------- the configuration panel ---------------------- */
+
+  /* Grouped by what a filter does, not by where it came from. Render-time only:
+     the source array's order drives the funnel maths in layouts A and C. */
+  const decidedFilters = filters.filter((f) => hasLanded(f.id));
+  const grouped = MODE_ORDER
+    .map((m) => ({ mode: m, rows: decidedFilters.filter((f) => f.mode === m) }))
+    .filter((g) => g.rows.length > 0);
+
+  const filtersCard = (
+    <Card className={cx('p-3.5', !done && 'animate-[emaReveal_320ms_var(--ease-out-quint)_both]')} data-usage="filters">
+      <div className="flex items-baseline gap-2 mb-1">
+        <span className="text-sm font-medium text-[var(--fg1)]">Filters</span>
+        <span className="text-xs text-[var(--fg3)] tabular-nums">
+          {done
+            ? `${musts} must-have · ${inferred} inferred`
+            : landed === 0
+              ? 'Reading your description'
+              : `Reading · ${decidedFilters.length} of ${filters.length}`}
+        </span>
+      </div>
+      <div className="mb-2.5"><DerivedFrom /></div>
+
+      <div className="space-y-3">
+        {grouped.map((g) => (
+          <div key={g.mode}>
+            <div className="flex items-center gap-1.5 mb-1 px-1.5">
+              <span className={cx('size-2 rounded-full shrink-0', MODE_DOT[g.mode])} />
+              <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">
+                {MODE_COPY[g.mode].label}
+              </span>
+              <span className="text-xs text-[var(--fg3)] tabular-nums">{g.rows.length}</span>
+            </div>
+
+            <div className="space-y-1">
+              {g.rows.map((f) => (
+                <div
+                  key={f.id}
+                  className={cx(
+                    'flex items-center gap-2 px-1.5 py-1 rounded-sm transition-colors duration-150',
+                    'hover:bg-[var(--beige-100)] focus-within:bg-[var(--beige-100)]',
+                    /* backwards, never both: a filled animation keeps this row
+                       a stacking context after it has landed, and the open mode
+                       menu of a row above would paint underneath it. */
+                    !done && 'animate-[emaReveal_280ms_var(--ease-out-quint)_backwards]',
+                  )}
+                >
+                  <span className="text-sm text-[var(--fg1)] truncate flex-1">
+                    {written(f.id, f.value)}
+                    {/* No phrase behind it: Ema inferred this one, and says so
+                        rather than implying a source that is not in the text. */}
+                    {(done || hasResolved(f.id)) && !BRIEF_SOURCE[f.id] && (
+                      <span className="ml-1.5 inline-flex items-baseline gap-1 text-xs text-[var(--fg3)]">
+                        <SuggestedMark />
+                        inferred
+                      </span>
+                    )}
+                  </span>
+                  {/* Right-aligned like layout C: a 248px menu hung off a 92px
+                      cell at the card's edge otherwise spills into open air. */}
+                  <span className={cx(
+                    'shrink-0 w-[92px] [&>span]:block [&>span>button]:w-full [&>span>button]:justify-between',
+                    '[&_[role=menu]]:left-auto [&_[role=menu]]:right-0',
+                  )}>
+                    {hasResolved(f.id) ? (
+                      // The pop is dropped once the pass is over, and is
+                      // backwards-filled while it runs: either way this span
+                      // must stop being a stacking context the moment it has
+                      // settled, or the menu paints under the rows below it.
+                      <span className={cx('block', !done && 'animate-[emaPop_160ms_var(--ease-out-quint)_backwards]')}>
+                        <ModePicker compact value={f.mode} name={f.value} onChange={(m) => setMode(f.id, m)} />
+                      </span>
+                    ) : (
+                      <span className="ema-skeleton block h-6 w-full rounded-sm" aria-hidden />
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {done && (
+        <AddFilter
+          className="mt-2"
+          categories={FILTER_CATEGORIES}
+          onAdd={(category, value) => {
+            setFilters((prev) => [...prev, { id: `f_custom_${Date.now()}`, category, value, mode: 'preferred' }]);
+            store.toast(`Added “${value}” to ${category.toLowerCase()}.`);
+          }}
+        />
+      )}
+    </Card>
+  );
+
+  /* Ranked by what each criterion actually controls. Sorted on the share rather
+     than the weight, because `weightShares` breaks its rounding ties on array
+     position — sorting the numbers keeps the numbers themselves still. */
+  const rankedCriteria = [...store.criteria].sort((a, b) => (shares[b.id] ?? 0) - (shares[a.id] ?? 0));
+  const decidedCriteria = rankedCriteria.filter((c) => hasLanded(c.id));
+
+  /* An empty card counting "0 of 6" while the filters finish is furniture for
+     work that has not started. The card arrives when Ema reaches it. */
+  const scorecardCard = !done && decidedCriteria.length === 0 ? null : (
+    <Card
+      className={cx('p-3.5', !done && 'animate-[emaReveal_320ms_var(--ease-out-quint)_120ms_both]')}
+      data-usage="scorecard"
+    >
+      <div className="flex items-center gap-2 mb-1">
+        <span className="text-sm font-medium text-[var(--fg1)]">Scorecard</span>
+        <ScorecardInfo />
+        <span className="text-xs text-[var(--fg3)] tabular-nums">
+          {done
+            ? `${store.criteria.length} criteria · most to least of the score`
+            : `Weighing · ${decidedCriteria.length} of ${store.criteria.length}`}
+        </span>
+      </div>
+      <div className="mb-2.5"><DerivedFrom /></div>
+      <div className="space-y-1.5">
+        {decidedCriteria.map((c) => (
+          <div key={c.id} className={cx(!done && 'animate-[emaReveal_280ms_var(--ease-out-quint)_both]')}>
+            {/* The level scale, not the stepper: this act is about how much each
+                criterion matters relative to the others, not about ±1. */}
+            <ScorecardRow
+              compact
+              weightControl="scale"
+              pending={!hasResolved(c.id)}
+              share={shares[c.id]}
+              criterion={{ ...c, name: written(c.id, c.name) }}
+              note={(done || hasResolved(c.id)) && !BRIEF_SOURCE[c.id] ? (
+                <span className="ml-1.5 inline-flex items-baseline gap-1 text-xs font-normal text-[var(--fg3)]">
+                  <SuggestedMark />
+                  inferred
+                </span>
+              ) : undefined}
+              onChange={(next) => store.setCriteria(store.criteria.map((x) => (x.id === c.id ? next : x)))}
+            />
+          </div>
+        ))}
+      </div>
+      {done && (
+        <AddCriterion
+          className="mt-2"
+          criteria={store.criteria}
+          onAdd={(c) => {
+            store.setCriteria([...store.criteria, { ...c, id: `c_custom_${Date.now()}` }]);
+            store.toast(`Added “${c.name}” to the scorecard.`);
+          }}
+        />
+      )}
+    </Card>
+  );
+
+  const reachAndBegin = (
+    <div className="flex items-center gap-4 flex-wrap" data-usage="reach">
+      <div>
+        <div className="flex items-baseline gap-1.5">
+          <span className="text-xl font-bold text-[var(--fg1)] tabular-nums">≈ 1,180</span>
+          <span className="text-sm text-[var(--fg2)]">profiles match</span>
+        </div>
+        <div className="text-xs text-[var(--fg3)] mt-0.5">
+          {ready ? 'Scores all 8,412 profiles · about 2 minutes' : `Answer ${BLOCKING.length - answered} more to begin`}
+        </div>
+      </div>
+      <Button
+        size="lg"
+        className="ml-auto"
+        disabled={!ready}
+        icon={<MagnifyingGlass size={16} weight="bold" />}
+        onClick={begin}
+      >
+        Begin search
+      </Button>
+    </div>
+  );
+
+  /* --------------------------- act 2: configuring ------------------------- */
+
+  if (stage === 'configuring') {
+    /* Said back in the user's own options, never hardcoded: the point of
+       repeating it is that it is what they picked. */
+    const settled = BLOCKING.map((s) => answers[s.id]).filter(Boolean).join(', ');
+    return (
+      <AppShell chrome="hidden">
+        <div className={cx(
+          'h-full overflow-y-auto bg-[var(--app-background)]',
+          leaving ? LEAVE : 'animate-[emaFade_200ms_var(--ease-out-quint)_both]',
+        )}>
+          <div className="p-5 space-y-3">
+            {/* Full width, so its right edge lines up with the cards below;
+                the brief's own text is capped to a readable measure inside. */}
+            <div className="space-y-2.5" data-usage="role">
+              <Bubble from="ema">
+                Read that. <span className="font-medium">{settled}</span>. Building your filters
+                and scorecard — each one lights up the words it came from.
+              </Bubble>
+              {/* The brief stays on screen through the pass: the lit phrase is
+                  the only evidence that a row came from something you wrote. */}
+              <Card className="px-3 py-2.5">
+                <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] mb-1">
+                  Your brief
+                </div>
+                <div className="text-sm text-[var(--fg2)] leading-[20px] max-w-[92ch]">
+                  <Lit text={brief} phrase={readingNow} />
+                </div>
+              </Card>
+            </div>
+
+            {/* The reason for the act: the same two-column configuration act 3
+                ends on, at the full width of the window. */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+              {filtersCard}
+              {scorecardCard}
+            </div>
+          </div>
+        </div>
+        <ToastStack toasts={toasts} onDismiss={dismissToast} />
+        <UsageOverlay screen="search" />
+      </AppShell>
+    );
+  }
+
+  /* ------------------------------ act 3: ready ---------------------------- */
+
+  const steps = [
+    { label: 'Read your role description', detail: `${brief.length} characters` },
+    { label: `Extracted ${filters.length} filters`, detail: `${musts} must-have · ${inferred} that only shape the order` },
+    { label: 'Asked what changes eligibility', detail: BLOCKING.map((s) => answers[s.id]).join(' · ') },
+    { label: `Inferred ${store.criteria.length} scorecard criteria`, detail: 'Required criteria count double in the score' },
+  ];
+
+  return (
+    <AppShell chrome="enter" breadcrumbs={['Searches', SEARCH.name]} screen="search">
+      <div className="h-full overflow-y-auto">
+        <div className="max-w-[1100px] mx-auto p-5 space-y-3">
+          {/* The thread folds to a line, but the reasoning stays reachable:
+              "where did these filters come from" is the first question anyone
+              asks of a configuration they did not type. */}
+          <Card className="overflow-hidden animate-[emaRise_240ms_var(--ease-out-quint)_both]" data-usage="role">
+            <div className="flex items-center gap-1 pr-2.5">
+              <button
+                onClick={() => setStepsOpen((o) => !o)}
+                aria-expanded={stepsOpen}
+                className="flex-1 min-w-0 flex items-center gap-2.5 px-3.5 py-2.5 text-left cursor-pointer transition-colors duration-150 hover:bg-[var(--beige-50)] active:bg-[var(--beige-100)]"
+              >
+                <span className="size-6 rounded-full bg-[var(--ai-magic)] text-white flex items-center justify-center shrink-0">
+                  <Sparkle size={12} weight="fill" />
+                </span>
+                <span className="text-sm text-[var(--fg1)] truncate flex-1 min-w-0">{brief}</span>
+                <span className="text-xs text-[var(--fg3)] shrink-0 hidden sm:inline">{steps.length} steps</span>
+                <CaretDown size={12} weight="bold" className={cx('text-[var(--fg3)] shrink-0 transition-transform duration-200 ease-[var(--ease-out-quint)]', stepsOpen && 'rotate-180')} />
+              </button>
+              <span className="w-px h-5 bg-[var(--beige-400)] shrink-0" />
+              <Button
+                size="sm"
+                variant="ghost"
+                color="altBrand"
+                icon={<ArrowCounterClockwise size={13} />}
+                /* The answers survive: they were true of this search a minute
+                   ago, they are chips you can change in place, and clearing
+                   them would disable Send on a screen you just came back to. */
+                onClick={() => { setDraft(brief); setSent(false); setStepsOpen(false); }}
+              >
+                Start again
+              </Button>
+            </div>
+
+            {stepsOpen && (
+              <div className="border-t border-[var(--beige-300)] bg-[var(--beige-50)] px-3.5 py-3">
+                <ol className="space-y-2.5">
+                  {steps.map((s, i) => (
+                    <li key={s.label} className={cx('flex gap-2.5', REVEAL)} style={delay(i)}>
+                      <span className="size-5 rounded-full bg-[var(--success-bg)] text-[var(--success-text)] text-[10px] font-bold flex items-center justify-center shrink-0 mt-px tabular-nums">
+                        {i + 1}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm text-[var(--fg1)] leading-[18px]">{s.label}</span>
+                        <span className="block text-xs text-[var(--fg2)] leading-4 mt-0.5">{s.detail}</span>
+                      </span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-3.5 animate-[emaRise_240ms_var(--ease-out-quint)_60ms_both]">{reachAndBegin}</Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
+            <div className="animate-[emaRise_240ms_var(--ease-out-quint)_100ms_both]">{filtersCard}</div>
+            <div className="animate-[emaRise_240ms_var(--ease-out-quint)_140ms_both]">{scorecardCard}</div>
           </div>
         </div>
       </div>
@@ -246,10 +668,45 @@ export function SearchConversational() {
   );
 }
 
+function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-pressed={on}
+      className={cx(
+        'h-7 px-2.5 rounded-pill border text-xs font-medium cursor-pointer transition-colors duration-150',
+        on
+          ? 'bg-[var(--brand-primary)] border-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:bg-[var(--brand-primary-accent)]'
+          : 'bg-white border-[var(--beige-500)] text-[var(--fg2)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-50)] active:bg-[var(--beige-200)]',
+      )}
+    >
+      {on && <Check size={10} weight="bold" className="inline mr-1" />}
+      {children}
+    </button>
+  );
+}
+
+/**
+ * The brief with one phrase lit — the words Ema is reading as it writes the
+ * filter they produced. Nothing is lit once the pass is over; this is a
+ * narration of the work, not a permanent annotation.
+ */
+function Lit({ text, phrase }: { text: string; phrase: string | null }) {
+  const at = phrase ? text.indexOf(phrase) : -1;
+  if (at < 0 || !phrase) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, at)}
+      <mark className="brief-lit">{phrase}</mark>
+      {text.slice(at + phrase.length)}
+    </>
+  );
+}
+
 function Bubble({ from, children }: { from: 'ema' | 'you'; children: React.ReactNode }) {
   if (from === 'you') {
     return (
-      <div className="flex justify-end mt-3">
+      <div className="flex justify-end animate-[emaRise_200ms_var(--ease-out-quint)_both]">
         <div className="max-w-[80%] rounded-lg rounded-tr-sm bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] px-3 py-2 text-sm leading-[20px] whitespace-pre-line">
           {children}
         </div>
@@ -257,7 +714,7 @@ function Bubble({ from, children }: { from: 'ema' | 'you'; children: React.React
     );
   }
   return (
-    <div className="flex gap-2.5 mt-3">
+    <div className="flex gap-2.5 animate-[emaRise_200ms_var(--ease-out-quint)_80ms_both]">
       <span className="size-7 rounded-full bg-[var(--ai-magic)] text-white flex items-center justify-center shrink-0">
         <Sparkle size={13} weight="fill" />
       </span>

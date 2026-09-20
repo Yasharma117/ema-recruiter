@@ -4,16 +4,75 @@ import { Eye, X, Info } from '@phosphor-icons/react';
 import { cx } from '../components/ui';
 import { REGION_USAGE, SCREEN_USAGE, VARIANTS, type ScreenId, type VariantId } from './usage';
 
-/** Variant lives in the URL, like the existing ?state= switches, so it is shareable. */
+/* -------------------------------------------------------------------------- */
+/*  Mode: the finished flow, or the exploration that produced it              */
+/* -------------------------------------------------------------------------- */
+
+export type Mode = 'flow' | 'variants';
+
+/** What the finished product is, per screen. The other six are exploration. */
+const FINAL: Record<ScreenId, VariantId> = { search: 'b', candidates: 'a', outreach: 'b' };
+
+const KEY = 'ema.mode';
+
+/**
+ * The mode has to survive navigation, and query params here do not: every
+ * internal jump is a bare path (`navigate('/outreach')`), so a param set on the
+ * landing page is gone by the first click. The module-level cache is therefore
+ * the primary store and sessionStorage is only the reload mirror — which also
+ * means a private window degrades to "correct until reload" rather than losing
+ * the section entirely.
+ */
+let cached: Mode | null = null;
+
+function read(): Mode | null {
+  if (cached) return cached;
+  try {
+    const v = sessionStorage.getItem(KEY);
+    if (v === 'flow' || v === 'variants') cached = v;
+  } catch { /* private window, sandboxed iframe — the cache still works */ }
+  return cached;
+}
+
+function write(m: Mode) {
+  cached = m;
+  try { sessionStorage.setItem(KEY, m); } catch { /* see read() */ }
+}
+
+export function useMode(): Mode {
+  const [params] = useSearchParams();
+  const explicit = params.get('mode');
+
+  let mode: Mode;
+  if (explicit === 'flow' || explicit === 'variants') mode = explicit;
+  // An old shared link carries its own intent: ?layout= and ?usage= are both
+  // exploration tools, so arriving with one means arriving in the exploration.
+  else if (params.has('layout') || params.has('usage')) mode = 'variants';
+  // A bare URL shows the finished product. That is what a hosted link is for.
+  else mode = read() ?? 'flow';
+
+  React.useEffect(() => { write(mode); }, [mode]);
+  return mode;
+}
+
+/**
+ * Which variant to render. In the finished flow this is settled per screen and
+ * the URL cannot override it; in the exploration it lives in ?layout=, like the
+ * existing ?state= switches, so it stays shareable.
+ */
 export function useVariant(screen: ScreenId): VariantId {
   const [params] = useSearchParams();
+  const mode = useMode();
+  if (mode === 'flow') return FINAL[screen];
   const v = params.get('layout');
   return v === 'b' || v === 'c' ? v : 'a';
 }
 
 export function useUsageOverlay(): boolean {
   const [params] = useSearchParams();
-  return params.get('usage') === '1';
+  // The overlay annotates the bets behind a variant, so it belongs to the
+  // exploration. Nine screens render it; gating here turns all of them off.
+  return useMode() === 'variants' && params.get('usage') === '1';
 }
 
 /** Segmented A/B/C plus the usage toggle. Mounts into the AppShell header. */
