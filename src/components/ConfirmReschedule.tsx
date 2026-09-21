@@ -40,7 +40,7 @@ export function ConfirmReschedule({
       </div>
 
       <div className="px-5 pb-4">
-        <div className="rounded-lg border border-[var(--beige-400)] bg-[var(--beige-50)] p-3">
+        <div className="rounded-lg border border-[var(--beige-400)] bg-[var(--bg3)] p-3">
           {m.previous && (
             <div className="flex items-center gap-2 text-sm mb-2.5 pb-2.5 border-b border-[var(--beige-300)]">
               <span className="line-through text-[var(--fg3)]">{m.previous.theirs}</span>

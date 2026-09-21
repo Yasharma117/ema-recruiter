@@ -23,6 +23,31 @@ const NAV_SECONDARY = [
   { to: '/settings', icon: Gear, label: 'Settings' },
 ];
 
+/**
+ * IconButton's beige hovers are invisible on the rail, and its --fg2 ink is
+ * 1.6:1 there. Same geometry, rail palette.
+ */
+function RailIconButton({
+  icon, onClick, title, className,
+}: { icon: React.ReactNode; onClick?: () => void; title: string; className?: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className={cx(
+        'inline-flex items-center justify-center size-9 rounded-sm shrink-0 cursor-pointer',
+        'text-[var(--rail-fg)] hover:text-[var(--white)] hover:bg-[var(--rail-hover)]',
+        'active:bg-[rgba(255,255,255,0.12)] transition-colors duration-150',
+        className,
+      )}
+    >
+      {icon}
+    </button>
+  );
+}
+
 function Sidebar({
   collapsed, onToggle, onHide, screen, mode,
 }: {
@@ -47,48 +72,55 @@ function Sidebar({
          is the better answer anyway: you pressed it, and the labels inside
          appear and disappear outright regardless, so the eased width was
          sliding a rail around content that had already finished changing. */
-      className="relative shrink-0 h-full bg-[var(--beige-50)] border-r border-[var(--beige-300)] flex flex-col"
+      className="rail shrink-0 h-full flex flex-col"
       style={{ width: w }}
     >
       <div className={cx(
-        'h-14 flex items-center border-b border-[var(--beige-300)] shrink-0',
+        'h-14 flex items-center border-b border-[var(--rail-line)] shrink-0',
         collapsed ? 'justify-center px-0' : 'justify-between px-4',
       )}>
         {/* The mark is the way back to the overview, from either section. */}
         <NavLink to="/" title="Overview" className="inline-flex rounded-sm">
-          <img src={collapsed ? '/logo-mark.svg' : '/logo.svg'} alt="Ema" height={collapsed ? 24 : 22} style={{ height: collapsed ? 24 : 22 }} />
+          <img src={collapsed ? '/logo-mark.svg' : '/logo.svg'} alt="Ema" height={collapsed ? 24 : 22} style={{ height: collapsed ? 24 : 22 }} className="rail-logo" />
         </NavLink>
-        {!collapsed && <IconButton icon={<SidebarSimple size={16} />} onClick={onToggle} title="Collapse to icons" />}
+        {!collapsed && <RailIconButton icon={<SidebarSimple size={16} />} onClick={onToggle} title="Collapse to icons" />}
       </div>
 
       {collapsed && (
         <div className="flex items-center justify-center gap-0.5 pt-2 pb-1 shrink-0">
-          <IconButton icon={<SidebarSimple size={14} />} onClick={onToggle} title="Expand sidebar" className="size-7" />
-          <IconButton icon={<CaretDoubleLeft size={13} />} onClick={onHide} title="Hide sidebar" className="size-7" />
+          <RailIconButton icon={<SidebarSimple size={14} />} onClick={onToggle} title="Expand sidebar" className="size-7" />
+          <RailIconButton icon={<CaretDoubleLeft size={13} />} onClick={onHide} title="Hide sidebar" className="size-7" />
         </div>
       )}
 
       <nav className="p-3 flex-1 overflow-y-auto">
-        {!collapsed && <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] px-2.5 pt-2 pb-1">Recruiter</div>}
+        {!collapsed && <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--rail-fg-faint)] px-2.5 pt-2 pb-1">Recruiter</div>}
         {NAV.map(({ to, icon: Icon, label }) => (
           <NavLink key={to} to={to} title={collapsed ? label : undefined}
+            /* The rail is the one place in a table-dense product with room for
+               colour, and it was carrying none: a beige pill on a beige rail on
+               a beige page. The active row now sits in the brand's own tint with
+               a green marker down its left edge, so "where am I" is answered by
+               hue before it is answered by reading. */
             className={({ isActive }) => cx(
               'flex items-center gap-3 rounded-md mb-0.5 text-sm transition-colors duration-150 relative',
               collapsed ? 'h-10 justify-center' : 'px-2.5 py-2',
-              isActive ? 'bg-[var(--beige-200)] text-[var(--fg1)] font-medium' : 'text-[var(--fg2)] hover:bg-[var(--beige-100)]',
+              isActive
+                ? 'bg-[var(--rail-sel-bg)] text-[var(--rail-sel-fg)] font-medium'
+                : 'text-[var(--rail-fg)] hover:bg-[var(--rail-hover)] hover:text-[var(--white)]',
             )}>
             {({ isActive }) => (
               <>
                 <span className="relative inline-flex shrink-0">
-                  <Icon size={18} weight={isActive ? 'bold' : 'regular'} className={isActive ? 'text-[var(--brand-primary)]' : 'text-[var(--fg3)]'} />
+                  <Icon size={18} weight={isActive ? 'bold' : 'regular'} className={isActive ? 'text-[var(--rail-sel-fg)]' : 'text-[var(--rail-fg)]'} />
                   {collapsed && badges[to] > 0 && (
                     <span
                       key={to === '/outreach' && urgent ? 'urgent' : 'calm'}
                       className={cx(
-                        'absolute -top-1 -right-1.5 size-2.5 rounded-full ring-2 ring-[var(--beige-50)]',
+                        'absolute -top-1 -right-1.5 size-2.5 rounded-full ring-2 ring-[var(--rail-base)]',
                         to === '/outreach' && urgent
                           ? 'bg-[var(--warning)] animate-[emaPop_200ms_var(--ease-out-quint)]'
-                          : 'bg-[var(--brand-primary)]',
+                          : 'bg-[var(--rail-fg)]',
                       )}
                     />
                   )}
@@ -103,7 +135,7 @@ function Sidebar({
                       'inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-pill text-xs font-bold tabular-nums',
                       to === '/outreach' && urgent
                         ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] border border-[var(--warning-border)] animate-[emaPop_200ms_var(--ease-out-quint)]'
-                        : 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)]',
+                        : 'bg-[var(--rail-fg)] text-[var(--rail-base)]',
                     )}
                   >
                     {badges[to]}
@@ -112,56 +144,67 @@ function Sidebar({
                 {!collapsed && to === '/outreach' && urgent && (
                   <span className="sr-only">, needs attention</span>
                 )}
-                {!collapsed && isActive && !badges[to] && <span className="size-1.5 rounded-full bg-[var(--brand-primary)]" />}
               </>
             )}
           </NavLink>
         ))}
 
-        {!collapsed && <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] px-2.5 pt-5 pb-1">Workspace</div>}
-        {collapsed && <div className="h-px bg-[var(--beige-300)] my-3 mx-2" />}
+        {!collapsed && <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--rail-fg-faint)] px-2.5 pt-5 pb-1">Workspace</div>}
+        {collapsed && <div className="h-px bg-[var(--rail-line)] my-3 mx-2" />}
         {NAV_SECONDARY.map(({ to, icon: Icon, label }) => (
           <NavLink key={to} to={to} title={collapsed ? label : undefined}
             className={({ isActive }) => cx(
               'flex items-center gap-3 rounded-md mb-0.5 text-sm transition-colors duration-150',
               collapsed ? 'h-10 justify-center' : 'px-2.5 py-2',
-              isActive ? 'bg-[var(--beige-200)] text-[var(--fg1)] font-medium' : 'text-[var(--fg2)] hover:bg-[var(--beige-100)]',
+              isActive
+                ? 'bg-[var(--rail-sel-bg)] text-[var(--rail-sel-fg)] font-medium'
+                : 'text-[var(--rail-fg)] hover:bg-[var(--rail-hover)] hover:text-[var(--white)]',
             )}>
-            <Icon size={18} className="text-[var(--fg3)]" />
-            {!collapsed && <span>{label}</span>}
+            {({ isActive }) => (
+              <>
+                <Icon size={18} className={isActive ? 'text-[var(--rail-sel-fg)]' : 'text-[var(--rail-fg)]'} />
+                {!collapsed && <span>{label}</span>}
+              </>
+            )}
           </NavLink>
         ))}
       </nav>
 
       {mode === 'variants' && screen && !collapsed && (
-        <div className="px-3 pb-3 pt-2 border-t border-[var(--beige-300)] shrink-0">
-          <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] mb-1.5">Layout</div>
+        <div className="px-3 pb-3 pt-2 border-t border-[var(--rail-line)] shrink-0">
+          <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--rail-fg-faint)] mb-1.5">Layout</div>
           <LayoutPicker screen={screen} />
         </div>
       )}
 
       {!collapsed && (
-        <div className="px-3 pb-3 pt-2 border-t border-[var(--beige-300)] shrink-0">
-          <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] mb-1.5">Docs</div>
+        <div className="px-3 pb-3 pt-2 border-t border-[var(--rail-line)] shrink-0">
+          <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--rail-fg-faint)] mb-1.5">Docs</div>
           {['NOTES.md', 'LAYOUTS.md'].map((f) => (
             <NavLink key={f} to={`/docs/${f}`}
               className={({ isActive }) => cx(
                 'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors duration-150',
-                isActive ? 'bg-[var(--beige-200)] text-[var(--fg1)] font-medium' : 'text-[var(--fg2)] hover:bg-[var(--beige-100)]',
+                isActive
+                  ? 'bg-[var(--rail-sel-bg)] text-[var(--rail-sel-fg)] font-medium'
+                  : 'text-[var(--rail-fg)] hover:bg-[var(--rail-hover)] hover:text-[var(--white)]',
               )}>
-              <FileText size={16} className="text-[var(--fg3)]" />
-              {f}
+              {({ isActive }) => (
+                <>
+                  <FileText size={16} className={isActive ? 'text-[var(--rail-sel-fg)]' : 'text-[var(--rail-fg-faint)]'} />
+                  {f}
+                </>
+              )}
             </NavLink>
           ))}
         </div>
       )}
 
       <div className={cx('border-t border-[var(--beige-300)] flex items-center gap-2.5 shrink-0', collapsed ? 'justify-center py-3' : 'p-3')}>
-        <Avatar name="Sarah Chen" size={28} tone="green" />
+        <Avatar name="Sarah Chen" size={28} tone="railMark" />
         {!collapsed && (
           <div className="min-w-0">
-            <div className="text-[13px] font-medium text-[var(--fg1)] truncate leading-4">Sarah Chen</div>
-            <div className="text-xs text-[var(--fg3)] truncate leading-4">Talent, Risk Platform</div>
+            <div className="text-[13px] font-medium text-[var(--rail-fg)] truncate leading-4">Sarah Chen</div>
+            <div className="text-xs text-[var(--rail-fg-faint)] truncate leading-4">Talent, Risk Platform</div>
           </div>
         )}
       </div>
@@ -231,7 +274,7 @@ export function AppShell({
       </div>
       <div className="flex-1 min-w-0 flex flex-col">
         <header className={cx(
-          'h-14 shrink-0 flex items-center gap-3.5 px-5 bg-[var(--beige-50)] border-b border-[var(--beige-300)]',
+          'h-14 shrink-0 flex items-center gap-3.5 px-5 bg-[var(--app-chrome)] border-b border-[var(--beige-400)]',
           chrome === 'enter' && 'animate-[emaIn_200ms_var(--ease-out-quint)_60ms_backwards]',
         )}>
           {collapsed && <IconButton icon={<SidebarSimple size={16} />} onClick={() => setNav('full')} title="Expand sidebar" />}
@@ -249,7 +292,7 @@ export function AppShell({
                 ))}
               </div>
             ) : (
-              <h1 className="text-lg font-medium text-[var(--fg1)] truncate">{title}</h1>
+              <h1 className="text-lg font-bold text-[var(--fg1)] truncate">{title}</h1>
             )}
             {/* Breadcrumbs render as spans, so the page still needs a real h1. */}
             {breadcrumbs?.length ? (

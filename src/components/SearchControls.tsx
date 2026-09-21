@@ -282,13 +282,41 @@ export function WeightScale({
   );
 }
 
-const STEPPER = 'size-6 rounded-xs border border-[var(--beige-500)] bg-white text-[var(--fg2)] '
+const STEPPER = 'size-6 rounded-sm border border-[var(--border-color)] bg-white text-[var(--fg2)] '
   + 'transition-colors duration-150 cursor-pointer '
-  + 'hover:border-[var(--focus-border)] hover:bg-[var(--beige-50)] active:bg-[var(--beige-200)]';
+  + 'hover:border-[var(--focus-border)] hover:bg-[var(--beige-100)] active:bg-[var(--beige-200)]';
 /** At 1 and at 5 the button does nothing, so it stops offering. */
-const STEPPER_OFF = 'opacity-40 cursor-not-allowed hover:border-[var(--beige-500)] hover:bg-white active:bg-white';
+const STEPPER_OFF = 'opacity-40 cursor-not-allowed hover:border-[var(--border-color)] hover:bg-white active:bg-white';
 
 /** One editable scorecard criterion: type toggle, weight control, remove. */
+/**
+ * Remove, in edit mode.
+ *
+ * This is the one control on the configuration screen that is only present
+ * because you asked to change something — and it was hiding as a 12px ghost
+ * glyph at the far edge of a wide row, which reads as decoration until you
+ * hover it. It now carries its own outline at rest and turns destructive on
+ * approach: the affordance is visible before the intent is.
+ */
+export function RemoveButton({ onClick, title }: { onClick: () => void; title: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className={cx(
+        'inline-flex items-center justify-center size-7 shrink-0 rounded-sm cursor-pointer',
+        'border border-[var(--border-color)] bg-white text-[var(--fg2)]',
+        'hover:bg-[var(--error-bg-subtle)] hover:border-[var(--error-border)] hover:text-[var(--error-text)]',
+        'active:bg-[var(--error-bg)] transition-colors duration-150',
+      )}
+    >
+      <X size={13} weight="bold" />
+    </button>
+  );
+}
+
 export function ScorecardRow({
   criterion, onChange, onRemove, compact, weightControl = 'stepper', share, pending, note, nameNode,
 }: {
@@ -316,9 +344,9 @@ export function ScorecardRow({
   // swaps only the control.
   if (weightControl === 'scale' && !compact) {
     return (
-      <div className="rounded-lg border border-[var(--beige-400)] bg-[var(--beige-50)] p-3">
+      <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg3)] p-3">
         <div className="flex items-start gap-2.5">
-          <DotsSixVertical size={15} className="text-[var(--beige-700)] shrink-0 mt-0.5 cursor-grab" />
+          <DotsSixVertical size={15} className="text-[var(--fg3)] shrink-0 mt-0.5 cursor-grab" />
           <div className="flex-1 min-w-0">
             <div className="text-sm font-medium text-[var(--fg1)] leading-[18px]">{c.name}</div>
             <div className="text-xs text-[var(--fg3)] mt-0.5">Bar for a 5: {c.bar}</div>
@@ -339,7 +367,7 @@ export function ScorecardRow({
             {c.type}
           </button>
           {onRemove && (
-            <IconButton icon={<X size={12} />} className="size-6 shrink-0" onClick={onRemove} title={`Remove ${c.name}`} />
+            <RemoveButton onClick={onRemove} title={`Remove ${c.name}`} />
           )}
         </div>
         <div className="flex items-center gap-3 mt-2.5 pl-[25px]">
@@ -359,10 +387,10 @@ export function ScorecardRow({
     // Compact wraps: in a 360px rail a long criterion name and four controls on
     // one line squeeze the stepper, so the name takes the first line alone.
     <div className={cx(
-      'flex rounded-lg border border-[var(--beige-400)] bg-[var(--beige-50)]',
+      'flex rounded-lg border border-[var(--border-color)] bg-[var(--bg3)]',
       compact ? 'flex-wrap items-center gap-x-2 gap-y-1.5 p-2' : 'items-start gap-2.5 p-2.5',
     )}>
-      {!compact && <DotsSixVertical size={15} className="text-[var(--beige-700)] shrink-0 mt-1 cursor-grab" />}
+      {!compact && <DotsSixVertical size={15} className="text-[var(--fg3)] shrink-0 mt-1 cursor-grab" />}
       <div className={cx('min-w-0', compact ? 'basis-full' : 'flex-1')}>
         <div className="text-sm font-medium text-[var(--fg1)] leading-[18px]">
           {nameNode ?? c.name}{note}
@@ -422,7 +450,7 @@ export function ScorecardRow({
       </div>
       )}
       {onRemove && (
-        <IconButton icon={<X size={12} />} className="size-6 shrink-0" onClick={onRemove} title={`Remove ${c.name}`} />
+        <RemoveButton onClick={onRemove} title={`Remove ${c.name}`} />
       )}
     </div>
   );
@@ -476,7 +504,7 @@ export function AddFilter({
         value={draft.category}
         onChange={(e) => setDraft({ ...draft, category: e.target.value })}
         aria-label="Filter category"
-        className="h-8 px-2 rounded-sm border border-[var(--beige-500)] bg-white text-sm text-[var(--fg1)] outline-none cursor-pointer focus:border-[var(--focus-border)]"
+        className="h-9 px-3 rounded-md border border-[var(--border-color)] bg-white text-sm text-[var(--fg1)] outline-none cursor-pointer focus:border-[var(--focus-border)] focus:shadow-focus"
       >
         {categories.map((c) => <option key={c} value={c}>{c}</option>)}
       </select>
@@ -489,7 +517,7 @@ export function AddFilter({
           if (e.key === 'Enter') commit();
         }}
         placeholder="Value, e.g. Kubernetes"
-        className="flex-1 min-w-[160px] h-8 px-2 rounded-sm border border-[var(--beige-500)] bg-white text-sm text-[var(--fg1)] outline-none placeholder:text-[var(--fg3)] focus:border-[var(--focus-border)]"
+        className="flex-1 min-w-[160px] h-9 px-3 rounded-md border border-[var(--border-color)] bg-white text-sm text-[var(--fg1)] outline-none placeholder:text-[var(--fg3)] focus:border-[var(--focus-border)] focus:shadow-focus"
       />
       <span className="text-xs text-[var(--fg3)]">Added as Preferred, so it will not shrink your pool.</span>
       <Button size="sm" variant="ghost" color="altBrand" onClick={() => setDraft(null)}>Cancel</Button>
@@ -599,7 +627,7 @@ export function AddCriterion({
           </div>
         </div>
       </div>
-      <div className="flex items-center gap-2 px-3 py-2.5 border-t border-[var(--beige-300)] bg-[var(--beige-50)] rounded-b-lg">
+      <div className="flex items-center gap-2 px-3 py-2.5 border-t border-[var(--border-color)] bg-[var(--bg3)] rounded-b-lg">
         <span className="text-xs text-[var(--fg3)]">
           {draft.type === 'required'
             ? 'Scoring 1 or 2 here caps a candidate.'

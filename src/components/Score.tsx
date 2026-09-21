@@ -16,10 +16,14 @@ const BAND_PILL: Record<Band, string> = {
   'no-match': 'bg-[var(--muted-bg)] border-[var(--muted-border)] text-[var(--muted-text)]',
 };
 
+/* One band, one colour. The bar used to disagree with its own pill — a
+   `potential` score was a brown pill and a yellow bar, a `no-match` a gray-930
+   pill and a cool gray-500 bar at 1.59:1, which is not a bar, it is a rumour.
+   These are the pills' own hues at a weight that survives being 4px tall. */
 const BAND_BAR: Record<Band, string> = {
   good: 'bg-[var(--success)]',
-  potential: 'bg-[var(--yellow-600)]',
-  'no-match': 'bg-[var(--gray-500)]',
+  potential: 'bg-[var(--yellow-930)]',
+  'no-match': 'bg-[var(--beige-700)]',
 };
 
 /** The composite, band-coloured. Tilde marks low coverage. */
@@ -89,7 +93,7 @@ export function ScoreBreakdown({ candidate, criteria }: { candidate: Candidate; 
               {v ?? '—'}
             </span>
             <span className="flex-1 min-w-0 truncate text-[var(--fg3)]">{cs?.summary ?? 'Not enough evidence'}</span>
-            {c.type === 'required' && <span className="text-[10px] uppercase tracking-wide text-[var(--fg3)] shrink-0">Req</span>}
+            {c.type === 'required' && <span className="text-[10px] uppercase tracking-wide font-bold text-[var(--fg2)] shrink-0">Req</span>}
           </div>
         );
       })}
@@ -103,11 +107,17 @@ export function ScoreBreakdown({ candidate, criteria }: { candidate: Candidate; 
 
 /** Tier 1: what sits in the table cell. Pill + sparkbar + coverage + reason. */
 /**
- * The score, as a table cell: band pill, per-criterion sparkbar, coverage.
+ * The score, as a table cell: band pill and coverage.
  *
  * The "why" clause used to live here too, and truncated mid-word every time.
  * It now has its own column, so this cell keeps the two lines a recruiter
  * actually scans down: the number, and how much of it is evidence-backed.
+ *
+ * The per-criterion sparkbar sat beside the pill until it was cut. Six 4px bars
+ * cannot be read at a glance and are not meant to be — down a column of 110
+ * rows they were texture, and texture next to the one number the screen is
+ * sorted by competes with it. The same breakdown is still one hover away in
+ * the tooltip, at a size where the bars mean something.
  */
 export function ScoreCell({
   candidate, criteria,
@@ -115,18 +125,21 @@ export function ScoreCell({
   const r = rank(candidate, criteria);
   return (
     <div className="min-w-0">
-      <div className="flex items-center gap-2">
-        <Tooltip content={<ScoreBreakdown candidate={candidate} criteria={criteria} />} width={344} side="bottom">
-          <ScorePill ranking={r} />
-        </Tooltip>
-        <Sparkbar candidate={candidate} criteria={criteria} />
-      </div>
-      <div className={cx(
-        'text-xs tabular-nums mt-1 leading-4',
-        r.lowCoverage ? 'text-[var(--warning-text)]' : 'text-[var(--fg3)]',
-      )}>
-        {r.scored} of {r.total} scored
-      </div>
+      <Tooltip content={<ScoreBreakdown candidate={candidate} criteria={criteria} />} width={344} side="bottom">
+        <ScorePill ranking={r} />
+      </Tooltip>
+      {/* Only when it is not the full set.
+          This line read "6 out of 6" on 9 of the 12 candidates — three rows in
+          four repeating the same value down the column, which is the shape of
+          noise, not of information. What it is actually for is the exception: a
+          4.4 built on four criteria is a weaker claim than a 4.4 built on six,
+          and that is worth saying loudly on the few rows where it is true.
+          Full coverage is now the silent default and the caveat speaks. */}
+      {r.scored < r.total && (
+        <div className="text-xs font-medium tabular-nums mt-0.5 leading-4 text-[var(--warning-text)]">
+          {r.scored} of {r.total} scored
+        </div>
+      )}
     </div>
   );
 }
@@ -146,7 +159,7 @@ export function EvidenceCard({ e }: { e: Evidence }) {
       'flex gap-2.5 p-2.5 rounded-md border text-xs',
       inferred
         ? 'bg-[var(--warning-bg-subtle)] border-[var(--warning-border)] text-[var(--warning-text)]'
-        : 'bg-[var(--beige-50)] border-[var(--beige-400)]',
+        : 'bg-[var(--bg3)] border-[var(--beige-400)]',
     )}>
       <Icon size={14} className={cx('shrink-0 mt-0.5', inferred ? 'text-[var(--warning-text)]' : 'text-[var(--fg3)]')} />
       <div className="min-w-0 flex-1">
@@ -154,13 +167,13 @@ export function EvidenceCard({ e }: { e: Evidence }) {
           <span className={cx('font-medium', inferred ? 'text-[var(--warning-text)]' : 'text-[var(--fg1)]')}>{e.source}</span>
           {e.when && <span className="text-[var(--fg3)]">{e.when}</span>}
           {e.kind === 'internal' && (
-            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide text-[var(--fg3)]">
+            <span className="inline-flex items-center gap-1 text-[10px] uppercase tracking-wide font-bold text-[var(--fg2)]">
               <Lock size={9} /> Read-only
             </span>
           )}
         </div>
         {e.quote && <div className="text-[var(--fg2)] mt-1 leading-[17px]">“{e.quote}”</div>}
-        {e.meta && <div className="text-[var(--fg3)] mt-1 font-mono text-[11px]">{e.meta}</div>}
+        {e.meta && <div className="text-[var(--fg2)] mt-1 font-mono text-[11px]">{e.meta}</div>}
         {e.href && !inferred && (
           <a href={e.href} onClick={(ev) => ev.preventDefault()}
             className="inline-block mt-1.5 text-[var(--success-text)] hover:underline font-medium">
@@ -188,16 +201,19 @@ export function CriterionAudit({
   const band = bandOfCriterion(v);
 
   return (
-    <div className="border border-[var(--beige-400)] rounded-lg overflow-hidden bg-white">
+    <div className="border border-[var(--border-color)] rounded-lg overflow-hidden bg-[var(--bg3)]">
       <div className="flex items-start gap-3 p-3">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm font-medium text-[var(--fg1)]">{criterion.name}</span>
             <span className={cx(
               'text-[10px] uppercase tracking-[1px] font-bold px-1.5 py-0.5 rounded-xs',
+              /* Two beige steps apart and, once fg2 and fg3 merged, the same
+                 ink — so the required/preferred distinction that gates the
+                 whole score rendered as one chip printed twice. */
               criterion.type === 'required'
-                ? 'bg-[var(--beige-200)] text-[var(--fg2)]'
-                : 'bg-[var(--beige-100)] text-[var(--fg3)]',
+                ? 'bg-[var(--success-bg)] text-[var(--success-text)]'
+                : 'bg-[var(--beige-200)] text-[var(--fg2)]',
             )}>
               {criterion.type}
             </span>
@@ -207,7 +223,7 @@ export function CriterionAudit({
         </div>
         <span className={cx(
           'inline-flex items-center justify-center size-7 rounded-sm border font-bold text-sm tabular-nums shrink-0',
-          v === null ? 'bg-[var(--beige-50)] border-dashed border-[var(--beige-600)] text-[var(--fg3)]'
+          v === null ? 'bg-[var(--bg3)] border-dashed border-[var(--beige-600)] text-[var(--fg3)]'
             : cs?.confidence === 'low' ? cx(BAND_PILL[band!], 'border-dashed')
             : BAND_PILL[band!],
         )}>
@@ -218,7 +234,7 @@ export function CriterionAudit({
       {/* An unknown cell is not a soft no. It gets its own repair path. */}
       {cs && effectiveScore(cs) === null && (
         <div className="px-3 pb-3">
-          <div className="rounded-md border border-[var(--beige-500)] bg-[var(--beige-50)] p-2.5">
+          <div className="rounded-md border border-[var(--beige-500)] bg-[var(--bg3)] p-2.5">
             <div className="text-xs text-[var(--fg2)] leading-[17px]">
               No signal found. This is not counted against {'them'} — it lowers coverage, not the score.
             </div>

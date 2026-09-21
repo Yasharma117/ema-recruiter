@@ -89,7 +89,7 @@ export function SequenceEditor({
               )}
 
               {expanded && (
-                <div className="mt-2 rounded-md border border-[var(--beige-400)] bg-white p-2.5">
+                <div className="mt-2 rounded-md border border-[var(--border-color)] bg-[var(--bg3)] p-2.5">
                   {step.delayDays > 0 && (
                     <div className="text-xs text-[var(--fg3)] mb-2">
                       Sends {step.delayDays} days after the previous step

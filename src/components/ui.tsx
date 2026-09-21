@@ -22,7 +22,7 @@ const BTN_PALETTE: Record<string, string> = {
   'primary/altBrand': 'bg-[var(--beige-200)] text-[var(--beige-960)] hover:bg-[var(--beige-300)] active:bg-[var(--beige-400)]',
   'primary/aiMagic': 'bg-[var(--ai-magic)] text-white hover:bg-[var(--purple-900)] active:bg-[var(--purple-960)]',
   'primary/destructive': 'bg-[var(--error-bg-subtle)] text-[var(--error-text)] border border-[var(--error-border)] hover:bg-[var(--error-bg)] active:bg-[var(--red-300)]',
-  'secondary/brand': 'bg-white text-[var(--fg1)] border border-[var(--beige-500)] hover:bg-[var(--beige-50)] active:bg-[var(--beige-200)]',
+  'secondary/brand': 'bg-white text-[var(--fg1)] border border-[var(--beige-500)] hover:bg-[var(--beige-100)] active:bg-[var(--beige-200)]',
   'secondary/altBrand': 'bg-white text-[var(--beige-960)] border border-[var(--beige-500)] hover:bg-[var(--beige-100)] active:bg-[var(--beige-300)]',
   'secondary/aiMagic': 'bg-white text-[var(--ai-magic-text)] border border-[var(--ai-magic-border)] hover:bg-[var(--ai-magic-bg-subtle)] active:bg-[var(--ai-magic-bg)]',
   'secondary/destructive': 'bg-white text-[var(--error-text)] border border-[var(--error-border)] hover:bg-[var(--error-bg-subtle)] active:bg-[var(--error-bg)]',
@@ -64,7 +64,9 @@ export function Button({
         // Loading keeps the button's own colour: work in progress is not the
         // same state as "you cannot do this".
         disabled && !loading
-          ? 'bg-[var(--beige-100)] text-[var(--beige-800)] border border-[var(--beige-300)] cursor-not-allowed hover:bg-[var(--beige-100)]'
+          /* Was beige-800 on beige-100 — 3.09:1, and a disabled control still
+             has to be readable to say what it is you cannot do yet. */
+          ? 'bg-[var(--beige-100)] text-[var(--fg3)] border border-[var(--beige-400)] cursor-not-allowed hover:bg-[var(--beige-100)]'
           : BTN_PALETTE[`${variant}/${color}`] ?? BTN_PALETTE['primary/brand'],
         block && 'w-full',
         !(disabled || loading) && 'cursor-pointer',
@@ -154,12 +156,14 @@ export function StatusDot({ tone = 'idle', className }: { tone?: string; classNa
 
 export function Avatar({
   name, size = 28, tone = 'green', className,
-}: { name: string; size?: number; tone?: 'green' | 'purple' | 'beige'; className?: string }) {
+}: { name: string; size?: number; tone?: 'green' | 'purple' | 'beige' | 'railMark'; className?: string }) {
   const initials = name.split(' ').filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
   const tones = {
     green: 'bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)]',
-    purple: 'bg-[var(--ai-magic)] text-white',
+    purple: 'bg-[var(--ai-magic)] text-[var(--white)]',
     beige: 'bg-[var(--beige-300)] text-[var(--beige-960)]',
+    /** For the dark rail: Ema puts a white disc with dark initials down there. */
+    railMark: 'bg-[var(--white)] text-[var(--rail-base)]',
   };
   return (
     <span
@@ -174,8 +178,25 @@ export function Avatar({
 
 /* ----------------------------------- Card ---------------------------------- */
 
+/**
+ * A white surface on the beige canvas.
+ *
+ * The border alone used to be the whole card: at 1.31:1 against a canvas that
+ * was itself 1.04:1 from the fill, a card was an outline drawn on nothing. The
+ * canvas now sits a step lower and the card carries a small shadow, so the
+ * thing reads as a sheet resting on a surface rather than a rectangle ruled
+ * onto one.
+ */
 export function Card({ className, ...rest }: React.HTMLAttributes<HTMLDivElement>) {
-  return <div {...rest} className={cx('bg-white border border-[var(--beige-400)] rounded-lg', className)} />;
+  return (
+    <div
+      {...rest}
+      className={cx(
+        'bg-white border border-[var(--border-color)] rounded-lg shadow-[var(--shadow-xs)]',
+        className,
+      )}
+    />
+  );
 }
 
 /* ---------------------------------- Input ---------------------------------- */
@@ -238,7 +259,7 @@ export function Checkbox({
         'transition-colors duration-150',
         checked || indeterminate
           ? 'bg-[var(--brand-primary)] border-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:bg-[var(--brand-primary-accent)] active:bg-[var(--brand-primary-active)]'
-          : 'bg-white border-[var(--beige-600)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-50)] active:bg-[var(--beige-200)]',
+          : 'bg-white border-[var(--beige-600)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-100)] active:bg-[var(--beige-200)]',
         disabled
           ? 'opacity-40 cursor-not-allowed hover:bg-white hover:border-[var(--beige-600)]'
           : 'cursor-pointer',
@@ -259,7 +280,7 @@ export function Checkbox({
 
 export function LabelText({ children, className }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={cx('text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]', className)}>
+    <div className={cx('text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]', className)}>
       {children}
     </div>
   );

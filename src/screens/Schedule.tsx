@@ -124,7 +124,7 @@ export function SchedulePanel({
           <div className="rounded-lg border border-[var(--ai-magic-border)] bg-[var(--ai-magic-bg-subtle)] p-3 mb-3">
             <div className="flex items-center gap-1.5 mb-1.5">
               <Sparkle size={13} weight="fill" className="text-[var(--ai-magic-text)]" />
-              <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--ai-magic-text)]">
+              <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--ai-magic-text)]">
                 Matched to what they said
               </span>
             </div>
@@ -139,7 +139,7 @@ export function SchedulePanel({
 
         {/* Duration */}
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">Length</span>
+          <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]">Length</span>
           <div className="inline-flex items-center gap-0.5 p-0.5 bg-[var(--beige-100)] border border-[var(--beige-300)] rounded-sm">
             {DURATIONS.map((d) => (
               <button
@@ -167,7 +167,7 @@ export function SchedulePanel({
         <div className="space-y-3">
           {visible.map((day) => (
             <div key={day.label}>
-              <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] mb-1.5">
+              <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] mb-1.5">
                 {day.label}
               </div>
               <div className="grid grid-cols-2 gap-1.5">
@@ -228,8 +228,8 @@ export function SchedulePanel({
         )}
 
         {/* Invite preview */}
-        <div className="mt-4 rounded-lg border border-[var(--beige-400)] bg-[var(--beige-50)] p-3">
-          <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] mb-2">Invite</div>
+        <div className="mt-4 rounded-lg border border-[var(--beige-400)] bg-[var(--bg3)] p-3">
+          <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] mb-2">Invite</div>
           <div className="text-sm font-medium text-[var(--fg1)]">{meetingTitle(candidate.name)}</div>
           <div className="text-xs text-[var(--fg2)] mt-1">
             {duration} min · {CALENDAR.handle} and {candidate.email ?? candidate.linkedin}
@@ -242,7 +242,7 @@ export function SchedulePanel({
       </div>
 
       {/* Mode + send */}
-      <div className="shrink-0 border-t border-[var(--beige-300)] px-5 py-3">
+      <div className="shrink-0 border-t border-[var(--beige-400)] px-5 py-3">
         <div className="flex items-center gap-4 mb-2.5">
           {([
             ['propose', `Propose ${picked.size || ''} time${picked.size === 1 ? '' : 's'}`.replace('  ', ' ')],

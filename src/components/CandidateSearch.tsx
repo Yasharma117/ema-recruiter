@@ -117,7 +117,7 @@ export function CandidateSearch({
             className="absolute right-0 top-full mt-2 z-50 w-[288px] bg-white border border-[var(--beige-400)] rounded-lg shadow-[var(--shadow-lg)] p-1.5 animate-[emaIn_150ms_var(--ease-out-quint)]"
           >
             <div className="flex items-center gap-2 px-2 pt-1.5 pb-2">
-              <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] flex-1">
+              <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] flex-1">
                 Narrow the list
               </span>
               {activeCount > 0 && (
@@ -192,7 +192,7 @@ export function NoQueryMatch({ query, onClear, compact }: {
       </div>
       <button
         onClick={onClear}
-        className="mt-3 text-sm font-medium text-[var(--brand-primary)] hover:underline cursor-pointer"
+        className="mt-3 text-sm font-medium text-[var(--brand-ink)] hover:underline cursor-pointer"
       >
         Clear search
       </button>

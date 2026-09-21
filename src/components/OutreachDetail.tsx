@@ -43,7 +43,7 @@ const WAITING_ON: Partial<Record<OutreachState, string>> = {
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="flex gap-3 py-1.5 border-b border-[var(--beige-300)] last:border-b-0">
+    <div className="flex gap-3 py-1.5 border-b border-[var(--beige-400)] last:border-b-0">
       <div className="w-[104px] shrink-0 text-xs text-[var(--fg3)] pt-px">{label}</div>
       <div className="flex-1 min-w-0 text-sm text-[var(--fg1)]">{children}</div>
     </div>
@@ -69,7 +69,7 @@ export function OutreachDetail({
 
   return (
     <Drawer open onClose={onClose} width={520} label={`${candidate.name} — outreach detail`}>
-      <div className="shrink-0 flex items-start gap-3 px-5 pt-4 pb-3 border-b border-[var(--beige-300)]">
+      <div className="shrink-0 flex items-start gap-3 px-5 pt-4 pb-3 border-b border-[var(--beige-400)]">
         <Avatar name={candidate.name} size={36} tone={candidate.avatarTone} />
         <div className="flex-1 min-w-0">
           <div className="text-base font-medium text-[var(--fg1)] truncate">{candidate.name}</div>
@@ -143,8 +143,8 @@ export function OutreachDetail({
                 m.draft
                   ? 'border-[var(--ai-magic-border)] bg-[var(--ai-magic-bg-subtle)]'
                   : m.direction === 'in'
-                    ? 'border-[var(--beige-400)] bg-white'
-                    : 'border-[var(--beige-400)] bg-[var(--beige-50)]',
+                    ? 'border-[var(--border-color)] bg-[var(--bg3)]'
+                    : 'border-[var(--beige-400)] bg-[var(--bg3)]',
               )}
             >
               <div className="flex items-center gap-1.5 mb-1.5">
@@ -176,7 +176,7 @@ export function OutreachDetail({
         </div>
       </div>
 
-      <div className="shrink-0 border-t border-[var(--beige-300)] px-5 py-3 flex items-center gap-2 flex-wrap">
+      <div className="shrink-0 border-t border-[var(--beige-400)] px-5 py-3 flex items-center gap-2 flex-wrap">
         {a.primary && (
           <Button size="sm" onClick={() => onAction(record, a.primary!.id)}>{a.primary.label}</Button>
         )}

@@ -200,7 +200,7 @@ export function CandidateDrawer({
             <div className="rounded-lg border border-[var(--ai-magic-border)] bg-[var(--ai-magic-bg-subtle)] p-3">
               <div className="flex items-center gap-1.5 mb-1.5">
                 <Sparkle size={13} weight="fill" className="text-[var(--ai-magic-text)]" />
-                <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--ai-magic-text)]">
+                <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--ai-magic-text)]">
                   Written by Ema · Review before sending
                 </span>
               </div>
@@ -208,7 +208,7 @@ export function CandidateDrawer({
             </div>
 
             <div>
-              <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] mb-2">Experience</div>
+              <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] mb-2">Experience</div>
               <div className="space-y-0">
                 {candidate.roles.map((role, i) => (
                   <div key={i} className="flex gap-3">
@@ -229,7 +229,7 @@ export function CandidateDrawer({
             </div>
 
             <div>
-              <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] mb-1.5">Education</div>
+              <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] mb-1.5">Education</div>
               <div className="text-sm text-[var(--fg1)]">{candidate.education}</div>
             </div>
           </div>
@@ -316,7 +316,7 @@ export function CandidateDrawer({
           candidate.news.length ? (
             <div className="space-y-2">
               {candidate.news.map((n, i) => (
-                <div key={i} className="p-3 rounded-lg border border-[var(--beige-400)] bg-white">
+                <div key={i} className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg3)]">
                   <div className="text-sm text-[var(--fg1)]">{n.title}</div>
                   <div className="text-xs text-[var(--fg3)] mt-1">{n.source} · {n.when}</div>
                 </div>
@@ -333,7 +333,7 @@ export function CandidateDrawer({
           <div className="space-y-3 text-sm">
             {activity.map((a, i) => (
               <div key={i} className="flex gap-3">
-                <span className="font-mono text-[11px] text-[var(--fg3)] w-24 shrink-0 pt-0.5">{a.at}</span>
+                <span className="font-mono text-[11px] text-[var(--fg2)] w-24 shrink-0 pt-0.5">{a.at}</span>
                 <span className="text-[var(--fg1)]">
                   <span className={cx('font-medium',
                     a.who === 'Ema' ? 'text-[var(--ai-magic-text)]'
@@ -349,9 +349,9 @@ export function CandidateDrawer({
 
         {tab === 'contact' && (
           <div className="space-y-3">
-            <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-[var(--beige-400)] bg-white">
+            <div className="flex items-center justify-between gap-3 p-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg3)]">
               <div className="min-w-0">
-                <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">Email</div>
+                <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]">Email</div>
                 <div className="text-sm text-[var(--fg1)] truncate mt-0.5">{candidate.email ?? 'None on file'}</div>
               </div>
               {candidate.email
@@ -360,8 +360,8 @@ export function CandidateDrawer({
                   </Badge>
                 : <Badge variant="warning" size="sm">LinkedIn only</Badge>}
             </div>
-            <div className="p-3 rounded-lg border border-[var(--beige-400)] bg-white">
-              <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">LinkedIn</div>
+            <div className="p-3 rounded-lg border border-[var(--border-color)] bg-[var(--bg3)]">
+              <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]">LinkedIn</div>
               <div className="text-sm text-[var(--fg1)] mt-0.5">{candidate.linkedin ?? '—'}</div>
             </div>
           </div>

@@ -59,7 +59,7 @@ export function ClassifyPanel({
       <div className="rounded-lg border border-[var(--success-border)] bg-[var(--success-bg-subtle)] p-3">
         <div className="flex items-center gap-2 mb-2">
           <Avatar name={candidate.name} size={22} tone={candidate.avatarTone} />
-          <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--success-text)]">
+          <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--success-text)]">
             {first} replied
           </span>
           <span className="text-xs text-[var(--fg3)] ml-auto">{reply?.at}</span>
@@ -74,7 +74,7 @@ export function ClassifyPanel({
         <div className="rounded-lg border border-[var(--ai-magic-border)] bg-[var(--ai-magic-bg-subtle)] p-3">
           <div className="flex items-center gap-1.5 mb-1">
             <Sparkle size={13} weight="fill" className="text-[var(--ai-magic-text)]" />
-            <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--ai-magic-text)]">
+            <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--ai-magic-text)]">
               Ema reads this as {OUTCOMES.find((o) => o.id === proposed.outcome)?.label.toLowerCase()}
             </span>
           </div>
@@ -84,7 +84,7 @@ export function ClassifyPanel({
 
       {/* Your call. */}
       <div>
-        <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] mb-2">
+        <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] mb-2">
           Your call
         </div>
         <div className="space-y-1.5">
@@ -116,10 +116,10 @@ export function ClassifyPanel({
 
       {/* Second job: the reply answers a question we asked about an unknown cell. */}
       {resolvable.length > 0 && (
-        <div className="rounded-lg border border-[var(--beige-500)] bg-[var(--beige-50)] p-3">
+        <div className="rounded-lg border border-[var(--beige-500)] bg-[var(--bg3)] p-3">
           <div className="flex items-center gap-1.5 mb-1.5">
             <Question size={13} weight="bold" className="text-[var(--fg2)]" />
-            <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">
+            <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]">
               This answers what you asked
             </span>
           </div>

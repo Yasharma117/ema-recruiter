@@ -58,7 +58,10 @@ export function MessagesScreen() {
   return (
     <AppShell breadcrumbs={['Searches', SEARCH.name, 'Messages']} actions={headerActions}>
       <div className="h-full flex flex-col">
-        <div className="shrink-0 px-5 pt-3.5 pb-2.5 border-b border-[var(--beige-300)]">
+        <div className="shrink-0 px-5 pt-3.5 pb-2.5 border-b border-[var(--beige-400)]">
+          {/* Same measure and same centre as the cards below, so the tabs sit
+              on the column they control rather than on the window. */}
+          <div className="max-w-[860px] mx-auto w-full">
           <Tabs
             variant="segmented"
             value={tab}
@@ -73,12 +76,13 @@ export function MessagesScreen() {
               ? 'Nothing here has been sent. Edit any message, or approve several at once.'
               : 'Editing a template rewrites every unsent copy. Messages already sent are never touched.'}
           </div>
+          </div>
         </div>
 
         <div className="flex-1 min-h-0 overflow-y-auto p-5">
           {tab === 'drafts' ? (
             drafts.length ? (
-              <div className="space-y-2.5 max-w-[860px]">
+              <div className="space-y-2.5 max-w-[860px] mx-auto">
                 {drafts.map((r) => {
                   const c = byId.get(r.candidateId);
                   const draft = r.messages.find((m) => m.draft);
@@ -114,7 +118,7 @@ export function MessagesScreen() {
               />
             )
           ) : (
-            <div className="space-y-3 max-w-[860px]">
+            <div className="space-y-3 max-w-[860px] mx-auto">
               {sequence.map((step) => {
                 // Who this template still applies to, and who has diverged.
                 const unsent = outreach.filter((r) => step.n > r.step && !isHalted(r));
@@ -160,7 +164,7 @@ function DraftCard({
         <Checkbox checked={checked} onChange={onCheck} label={`Select message to ${name}`} />
         <Avatar name={name} size={26} tone={tone} />
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium text-[var(--fg1)] truncate">{name}</div>
+          <div className="text-base font-bold text-[var(--fg1)] truncate">{name}</div>
           <div className="text-xs text-[var(--fg3)] truncate">{company}</div>
         </div>
         <span className="inline-flex items-center gap-1 text-xs text-[var(--fg3)]">
@@ -175,7 +179,7 @@ function DraftCard({
       <div className="rounded-lg border border-[var(--ai-magic-border)] bg-[var(--ai-magic-bg-subtle)] p-3">
         <div className="flex items-center gap-1.5 mb-1.5">
           <Sparkle size={12} weight="fill" className="text-[var(--ai-magic-text)]" />
-          <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--ai-magic-text)]">
+          <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--ai-magic-text)]">
             Drafted by Ema · Review before sending
           </span>
         </div>
@@ -186,7 +190,7 @@ function DraftCard({
           </div>
         )}
 
-        {subject && <div className="text-sm font-medium text-[var(--fg1)] mb-1">{subject}</div>}
+        {subject && <div className="text-sm font-bold text-[var(--fg1)] mb-1">{subject}</div>}
 
         {editing ? (
           <>
@@ -233,19 +237,19 @@ function TemplateCard({
           {n}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-medium text-[var(--fg1)]">{label}</div>
+          <div className="text-base font-bold text-[var(--fg1)]">{label}</div>
           <div className="text-xs text-[var(--fg3)]">
             {channel === 'email' ? 'Email' : 'LinkedIn'}
             {delayDays > 0 && ` · waits ${delayDays}d after the previous step`}
           </div>
         </div>
-        <span className={cx('text-xs tabular-nums', affected ? 'text-[var(--fg2)]' : 'text-[var(--fg3)]')}>
+        <span className={cx('text-xs tabular-nums', affected ? 'font-bold text-[var(--fg1)]' : 'text-[var(--fg3)]')}>
           {affected} unsent
         </span>
       </div>
 
       {subject && (
-        <div className="text-sm font-medium text-[var(--fg1)] mb-1.5">{subject}</div>
+        <div className="text-sm font-bold text-[var(--fg1)] mb-1.5">{subject}</div>
       )}
 
       {editing ? (
@@ -265,7 +269,7 @@ function TemplateCard({
         </>
       ) : (
         <>
-          <div className="text-sm text-[var(--fg2)] whitespace-pre-line leading-[20px] rounded-md bg-[var(--beige-50)] border border-[var(--beige-400)] p-2.5">
+          <div className="text-sm text-[var(--fg2)] whitespace-pre-line leading-[20px] rounded-md bg-[var(--bg3)] border border-[var(--border-color)] p-2.5">
             {body}
           </div>
           <div className="flex items-center gap-2 mt-2.5 flex-wrap">

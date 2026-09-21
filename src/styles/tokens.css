@@ -154,21 +154,39 @@
   --brand-secondary-foreground: var(--beige-960);
   --brand-secondary-muted: var(--beige-800);
 
-  /* App surface */
-  --app-background: var(--beige-50);
-  --app-background-accent: var(--beige-200);
-  --app-foreground: var(--beige-960);
-  --app-muted-foreground: var(--beige-930);
+  /* App surface — three steps that are actually distinguishable.
 
-  /* Text aliases (fg1 = primary text, fg2 = muted, fg3 = tertiary) */
+     The canvas used to be beige-50, which is 1.04:1 against the white cards
+     sitting on it: a card was an outline, not an object, and the sidebar, the
+     header, the table and the page were one flat sheet. The canvas now sits a
+     real step below white (1.14:1) so that "beige-on-white" describes what is
+     on screen rather than what was intended. The chrome (rail, header) stays at
+     beige-50, which now reads *lighter* than the page — it separates without
+     needing a hue of its own. */
+  --app-background: var(--beige-200);
+  --app-background-accent: var(--beige-300);
+  --app-foreground: var(--beige-960);
+  --app-muted-foreground: var(--gray-930);
+
+  /** The rail and the top bar. Lighter than the canvas, so it reads as chrome. */
+  --app-chrome: var(--beige-50);
+
+  /* Text aliases (fg1 = primary text, fg2 = secondary, fg3 = tertiary).
+
+     fg2 and fg3 were both beige-930 — the accessibility pass that lifted fg3
+     off beige-800 landed it exactly on fg2, collapsing three tiers into two and
+     leaving the muted tier to carry more of the app than the primary one. Worse,
+     every `active ? fg2 : fg3` conditional in the product silently stopped
+     rendering. fg2 now sits at 8.45:1 on white, between fg1's 15.4 and fg3's
+     6.0, so each tier is a step someone can actually see. */
   --fg1: var(--beige-960);
-  --fg2: var(--beige-930);
-  --fg3: var(--beige-930);   /* was beige-800 — 3.2:1, failed WCAG AA */
+  --fg2: var(--gray-930);
+  --fg3: var(--beige-930);
   --fg-inverse: var(--white);
-  --bg1: var(--beige-50);
+  --bg1: var(--beige-200);
   --bg2: var(--white);
   --bg3: var(--beige-100);
-  --bg-accent: var(--beige-200);
+  --bg-accent: var(--beige-300);
 
   /* Status */
   --success: var(--green-800);   --success-fg: var(--white);
@@ -201,8 +219,20 @@
   --focus-ring: var(--brand-primary);
   --focus-border: var(--green-500);
 
+  /* Green as *ink*. brand-primary is green-800, which is 4.50:1 on white and
+     only 3.95:1 on the canvas — fine for a filled button, under AA the moment
+     it becomes a 12px link. green-900 is the same green a step darker and
+     clears AA on both surfaces, so link text and ghost labels use this and
+     brand-primary stays what it is good at: filling things. */
+  --brand-ink: var(--green-900);
+
   /* ─────────── 5. Borders / radii ─────────── */
-  --border-color: var(--beige-400);
+  /* beige-400 on white is 1.31:1 — a card edge you have to look for. One step
+     down carries the same warmth at 1.44:1, which is the difference between an
+     outline and an edge. */
+  --border-color: var(--beige-500);
+  /** The hairline *inside* a surface — table rules, list dividers, sub-rows. */
+  --border-subtle: var(--beige-400);
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -279,5 +309,5 @@ p  { font-size:14px; line-height:20px; font-weight:400; margin:0 0 12px; color:v
 small { font-size:12px; line-height:16px; color: var(--fg2); }
 code, pre { font-family: var(--font-mono); font-size: 13px; }
 code { background: var(--beige-100); padding: 1px 6px; border-radius: 4px; color: var(--beige-960); }
-a { color: var(--brand-primary); text-decoration: none; }
-a:hover { color: var(--brand-primary-accent); text-decoration: underline; }
+a { color: var(--brand-ink); text-decoration: none; }
+a:hover { color: var(--brand-primary-active); text-decoration: underline; }

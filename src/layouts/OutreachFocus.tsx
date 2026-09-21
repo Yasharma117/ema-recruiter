@@ -5,6 +5,7 @@ import {
 import type { OutreachRecord, OutreachState } from '../lib/types';
 import { STATES, nextAction, isHalted, type ActionId } from '../lib/outreach';
 import { SEARCH } from '../data/search';
+import { Wash } from '../components/Wash';
 import { Avatar, Badge, Banner, Button, Checkbox, EmptyState, ToastStack, cx } from '../components/ui';
 import { OutreachDetail } from '../components/OutreachDetail';
 import { AppShell } from '../components/AppShell';
@@ -55,10 +56,14 @@ const COLUMNS: { id: string; label: string; states: OutreachState[] }[] = [
 ];
 
 /** Colour says who is blocking, not what stage it is — C's rule, kept. */
+/* Semantic tokens, not raw scale steps — and `none` was beige-600, which is
+   1.25:1 against the column it sits in: the "Done" state had no visible marker
+   at all. Green says done, which is also what every other surface in the
+   product uses it for. */
 const DOT = {
-  you: { cls: 'bg-[var(--red-800)]', label: 'Needs you' },
-  clock: { cls: 'bg-[var(--yellow-900)]', label: 'Waiting' },
-  none: { cls: 'bg-[var(--beige-600)]', label: 'Done' },
+  you: { cls: 'bg-[var(--error)]', label: 'Needs you' },
+  clock: { cls: 'bg-[var(--pending)]', label: 'Waiting' },
+  none: { cls: 'bg-[var(--success)]', label: 'Done' },
 } as const;
 
 type Who = keyof typeof DOT;
@@ -290,7 +295,15 @@ export function OutreachFocusBoard() {
 
   return (
     <AppShell breadcrumbs={['Searches', SEARCH.name, 'Outreach']} screen="outreach">
-      <div className="h-full flex flex-col">
+      <div className="relative h-full flex flex-col">
+        {/* Filtering to a stage repaints the screen in that stage's key. The
+            header already says *what* is filtered; the wash says *where in the
+            funnel you are standing* without spending a row on it — and because
+            hue runs sand → blue → aqua → amber → green, the answer arrives
+            before the label is read. Blocked is red, and looks like the
+            off-ramp it is. Nothing is painted until a stage is chosen, so the
+            colour is feedback for the click, not permanent decoration. */}
+        {colFilter && <Wash key={colFilter} tone={colFilter} ambient />}
         {disconnected && forced === 'sender-disconnected' && (
           <div className="shrink-0 px-5 pt-3">
             <Banner
@@ -308,10 +321,11 @@ export function OutreachFocusBoard() {
         <div
           data-usage="stats"
           className={cx(
-            'shrink-0 px-5 pt-3 pb-3 border-b border-[var(--beige-300)]',
+            'shrink-0 px-5 pt-3 pb-3 border-b border-[var(--beige-400)]',
             boardOpen && 'flex-1 min-h-0 flex flex-col',
           )}
         >
+
           <div className="flex items-center gap-3 flex-wrap mb-2 shrink-0">
             {allQueue.length ? (
               <span className="text-sm text-[var(--fg1)]">
@@ -531,7 +545,7 @@ export function OutreachFocusBoard() {
         {!boardOpen && (
           <div className="flex-1 min-h-0 flex flex-col items-center overflow-y-auto">
             {/* Progress — emptying the queue is the goal, so it is the headline. */}
-            <div className="w-full max-w-[760px] px-6 pt-4 pb-3 shrink-0" data-usage="grouping">
+            <div className="w-full max-w-[760px] px-5 pt-4 pb-3 shrink-0" data-usage="grouping">
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium text-[var(--fg1)]">
                   {reviewIds ? 'Your selection' : activeCol ? activeCol.label : 'Needs you'}
@@ -545,7 +559,7 @@ export function OutreachFocusBoard() {
                     style={{ width: `${queue.length ? (cursor / queue.length) * 100 : 100}%` }}
                   />
                 </div>
-                <span className="text-sm text-[var(--fg2)] tabular-nums">
+                <span className="text-sm font-bold text-[var(--fg1)] tabular-nums">
                   {queue.length ? `${queue.length} left` : 'all clear'}
                 </span>
               </div>
@@ -572,7 +586,7 @@ export function OutreachFocusBoard() {
                     )}
                     <button
                       onClick={endReview}
-                      className="font-medium text-[var(--brand-primary)] rounded-xs px-1 hover:bg-[var(--beige-100)] cursor-pointer transition-colors duration-150"
+                      className="font-medium text-[var(--brand-ink)] rounded-xs px-1 hover:bg-[var(--beige-200)] cursor-pointer transition-colors duration-150"
                     >
                       Show the whole queue
                     </button>
@@ -597,12 +611,12 @@ export function OutreachFocusBoard() {
                 />
               </div>
             ) : (
-              <div className="w-full max-w-[760px] px-6 pb-10" data-usage="next-action">
+              <div className="w-full max-w-[760px] px-5 pb-10" data-usage="next-action">
                 <div key={jump} className="rounded-xl border border-[var(--beige-400)] bg-white shadow-[var(--shadow-sm)] p-5 animate-[emaIn_200ms_var(--ease-out-quint)]">
                   <div className="flex items-center gap-3 mb-3">
                     <Avatar name={candidate.name} size={36} tone={candidate.avatarTone} />
                     <div className="flex-1 min-w-0">
-                      <div className="text-base font-medium text-[var(--fg1)] truncate">{candidate.name}</div>
+                      <div className="text-lg font-bold text-[var(--fg1)] truncate">{candidate.name}</div>
                       <div className="text-xs text-[var(--fg3)] truncate">{candidate.title} · {candidate.company}</div>
                     </div>
                     <Badge variant={STATES[record.state].tone as any} size="md">{STATES[record.state].label}</Badge>
@@ -629,12 +643,12 @@ export function OutreachFocusBoard() {
                     <>
                       {record.messages.slice(-1).map((m, i) => (
                         <div key={i} className={cx('rounded-lg border p-3 mb-4',
-                          m.draft ? 'border-[var(--ai-magic-border)] bg-[var(--ai-magic-bg-subtle)]' : 'border-[var(--beige-400)] bg-[var(--beige-50)]')}>
+                          m.draft ? 'border-[var(--ai-magic-border)] bg-[var(--ai-magic-bg-subtle)]' : 'border-[var(--beige-400)] bg-[var(--bg3)]')}>
                           {m.draft ? (
                             <>
                               <div className="flex items-center gap-1.5 mb-1.5">
                                 <Sparkle size={12} weight="fill" className="text-[var(--ai-magic-text)]" />
-                                <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--ai-magic-text)]">
+                                <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--ai-magic-text)]">
                                   Drafted by Ema · Review before sending
                                 </span>
                               </div>
@@ -652,7 +666,7 @@ export function OutreachFocusBoard() {
                       ))}
 
                       <details className="mb-4 group">
-                        <summary className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] cursor-pointer hover:text-[var(--fg1)]">
+                        <summary className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] cursor-pointer hover:text-[var(--fg1)]">
                           The rest of the sequence · {record.totalSteps - record.step} unsent
                         </summary>
                         <div className="mt-2.5">
@@ -688,7 +702,7 @@ export function OutreachFocusBoard() {
                     </>
                   )}
 
-                  <div className="mt-4 pt-3 border-t border-[var(--beige-300)] text-xs text-[var(--fg3)]">
+                  <div className="mt-4 pt-3 border-t border-[var(--beige-400)] text-xs text-[var(--fg3)]">
                     <kbd className="font-mono">⏎</kbd> take the action ·{' '}
                     <kbd className="font-mono">J</kbd> skip · <kbd className="font-mono">K</kbd> back ·{' '}
                     <kbd className="font-mono">B</kbd> board
@@ -712,7 +726,7 @@ export function OutreachFocusBoard() {
             data-usage="bulk"
             role="status"
             aria-live="polite"
-            className="shrink-0 bg-[var(--beige-960)] text-white px-4 py-2.5 flex items-center gap-3 flex-wrap animate-[emaRise_200ms_var(--ease-out-quint)]"
+            className="shrink-0 bg-[var(--beige-960)] text-white px-5 py-2.5 flex items-center gap-3 flex-wrap animate-[emaRise_200ms_var(--ease-out-quint)]"
           >
             <span className="text-sm font-medium">{selected.size} selected</span>
             <button

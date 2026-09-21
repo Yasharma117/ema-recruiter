@@ -148,8 +148,8 @@ export function NotificationBell() {
               'origin-top-right animate-[emaPop_150ms_var(--ease-out-quint)]',
             )}
           >
-            <div className="flex items-center justify-between px-3.5 h-10 border-b border-[var(--beige-300)]">
-              <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">
+            <div className="flex items-center justify-between px-3.5 h-10 border-b border-[var(--beige-400)]">
+              <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]">
                 Notifications
               </span>
               <span className="text-xs text-[var(--fg3)] tabular-nums">{notifications.length}</span>
@@ -162,7 +162,7 @@ export function NotificationBell() {
             ) : (
               <ul className="max-h-[360px] overflow-y-auto">
                 {notifications.map((n) => (
-                  <li key={n.id} className="border-b border-[var(--beige-300)] last:border-b-0">
+                  <li key={n.id} className="border-b border-[var(--beige-400)] last:border-b-0">
                     <button
                       onClick={() => go(n.candidateId)}
                       className={cx(

@@ -1,14 +1,14 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Sparkle, Check, MagnifyingGlass, PaperPlaneTilt, CaretDown, ArrowCounterClockwise, PencilSimple, X,
+  Sparkle, Check, MagnifyingGlass, PaperPlaneTilt, CaretDown, ArrowCounterClockwise, PencilSimple,
 } from '@phosphor-icons/react';
 import {
   SEARCH, FILTERS, FILTER_CATEGORIES, BRIEF_SOURCE, type FilterChip, type FilterMode,
 } from '../data/search';
-import { Button, Card, IconButton, Textarea, ToastStack, cx } from '../components/ui';
+import { Button, Card, Textarea, ToastStack, cx } from '../components/ui';
 import {
-  ModePicker, ScorecardRow, ScorecardInfo, DerivedFrom, AddFilter, AddCriterion,
+  ModePicker, ScorecardRow, ScorecardInfo, DerivedFrom, AddFilter, AddCriterion, RemoveButton,
   SuggestedMark, MODE_DOT, MODE_COPY,
 } from '../components/SearchControls';
 import { AppShell } from '../components/AppShell';
@@ -135,6 +135,8 @@ const LEAVE = 'animate-[emaOut_120ms_var(--ease-out-quint)_forwards]';
    the row itself — so there is always exactly one item visibly being weighed.
    Sixteen of them, plus a beat at the start for reading, comes to about 3s. */
 const STEP = 150;
+/** The beat between answering a question and Ema asking the next one. */
+const ASK_MS = 340;
 /** The pause before the first row: Ema is reading, not yet writing. */
 const READING_MS = 400;
 /** A name is written over this long, whatever its length. */
@@ -283,6 +285,26 @@ export function SearchConversational() {
      read anything. */
   const unanswered = BLOCKING.filter((b) => !answers[b.id]).map((b) => b.short);
 
+  /* The questions arrive one at a time. Both at once made this a form with two
+     fields and made Ema look like it had dealt a hand rather than asked
+     anything — and a form does not explain why it is only asking two things.
+     Answering the first is what prompts the second, after a beat long enough to
+     read as a reply. Nothing is ever taken away: an asked question stays on
+     screen and stays changeable. */
+  const wantAsked = React.useMemo(() => {
+    const next = BLOCKING.findIndex((b) => !answers[b.id]);
+    return next === -1 ? BLOCKING.length : next + 1;
+  }, [answers]);
+  const [asked, setAsked] = React.useState(1);
+  React.useEffect(() => {
+    if (still) { setAsked(BLOCKING.length); return; }
+    if (asked >= wantAsked) return;
+    const t = setTimeout(() => setAsked((n) => n + 1), ASK_MS);
+    return () => clearTimeout(t);
+  }, [asked, wantAsked, still]);
+  /** Every question is on screen, so the way forward can be too. */
+  const allAsked = asked >= BLOCKING.length;
+
   /** First beat: hand Ema the brief. */
   const submitBrief = () => {
     if (!draft.trim() || leaving) return;
@@ -336,7 +358,7 @@ export function SearchConversational() {
                   // back is a click, not a restart.
                   <Card className="px-3.5 py-3">
                     <div className="flex items-baseline gap-2 mb-1">
-                      <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] flex-1">
+                      <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] flex-1">
                         Your brief
                       </span>
                       <button
@@ -387,14 +409,20 @@ export function SearchConversational() {
                   </div>
 
                   <div className="mt-3 space-y-2.5">
-                    {BLOCKING.map((step, i) => (
+                    {BLOCKING.slice(0, asked).map((step, i) => (
                       <Card
                         key={step.id}
                         className="p-3 animate-[emaRise_240ms_var(--ease-out-quint)_backwards]"
-                        style={delay(i, 140)}
                       >
-                        <div className="text-sm font-medium text-[var(--fg1)]">{step.ask}</div>
-                        <div className="text-xs text-[var(--fg3)] mt-0.5 mb-2">{step.why}</div>
+                        <div className="flex items-baseline gap-2">
+                          <span className="text-sm font-bold text-[var(--fg1)] flex-1">{step.ask}</span>
+                          {/* Two questions, and the screen says so — otherwise
+                              answering one gives no sense of how much is left. */}
+                          <span className="text-xs text-[var(--fg2)] tabular-nums shrink-0">
+                            {i + 1} of {BLOCKING.length}
+                          </span>
+                        </div>
+                        <div className="text-xs text-[var(--fg2)] mt-0.5 mb-2">{step.why}</div>
                         <div className="flex flex-wrap gap-1.5">
                           {step.options.map((o) => (
                             <Choice
@@ -410,18 +438,39 @@ export function SearchConversational() {
                     ))}
                   </div>
 
-                  <div className="mt-4 flex items-center gap-2.5">
-                    <Button
-                      icon={<MagnifyingGlass size={14} weight="bold" />}
-                      disabled={unanswered.length > 0}
-                      onClick={send}
-                    >
-                      Build the search
-                    </Button>
-                    <span className="text-xs text-[var(--fg3)]">
-                      {unanswered.length ? `Pick ${sentenceList(unanswered)}` : 'Ema builds the filters and scorecard next'}
-                    </span>
-                  </div>
+                  {/* The way forward appears once there is nothing left to ask.
+                      Before that the questions are the only task on screen. */}
+                  {allAsked && (
+                    <div className="mt-4 animate-[emaRise_240ms_var(--ease-out-quint)_backwards]">
+                      {/* The button used to say "Build the search" next to
+                          "Ema builds the filters and scorecard next", which
+                          named the next click and nothing after it. Pressing
+                          this does not run a search — it writes the criteria a
+                          search will run on, and the whole point is that you get
+                          to argue with them first. So the arc is stated: Ema
+                          drafts, you vet, then you run. */}
+                      <div className="flex items-center gap-2.5 flex-wrap">
+                        <Button
+                          icon={<Sparkle size={14} weight="fill" />}
+                          disabled={unanswered.length > 0}
+                          onClick={send}
+                        >
+                          Build search criteria
+                        </Button>
+                        {unanswered.length > 0 && (
+                          <span className="text-xs text-[var(--fg2)]">Pick {sentenceList(unanswered)}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-[var(--fg2)] leading-[18px] mt-2.5 mb-0 max-w-[56ch]">
+                        Ema turns your brief into{' '}
+                        <span className="font-medium text-[var(--fg1)]">filters</span> that decide who is
+                        eligible and a <span className="font-medium text-[var(--fg1)]">scorecard</span> that
+                        decides the order. Nothing runs yet — you review and adjust them, then press{' '}
+                        <span className="font-medium text-[var(--fg1)]">Begin search</span> to see the
+                        ranked candidates.
+                      </p>
+                    </div>
+                  )}
                 </>
               )}
             </div>
@@ -447,7 +496,7 @@ export function SearchConversational() {
   const filtersCard = (
     <Card className={cx('p-3.5', !done && 'animate-[emaReveal_320ms_var(--ease-out-quint)_backwards]')} data-usage="filters">
       <div className="flex items-baseline gap-2 mb-1">
-        <span className="text-sm font-medium text-[var(--fg1)]">Filters</span>
+        <span className="text-base font-bold text-[var(--fg1)]">Filters</span>
         <span className="text-xs text-[var(--fg3)] tabular-nums">
           {done
             ? `${musts} must-have · ${inferred} inferred`
@@ -468,7 +517,7 @@ export function SearchConversational() {
               !done && !g.rows.some((f) => hasLanded(f.id)) && 'invisible',
             )}>
               <span className={cx('size-2 rounded-full shrink-0', MODE_DOT[g.mode])} />
-              <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">
+              <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]">
                 {MODE_COPY[g.mode].label}
               </span>
               <span className="text-xs text-[var(--fg3)] tabular-nums">
@@ -508,12 +557,12 @@ export function SearchConversational() {
                   {/* Right-aligned like layout C: a 248px menu hung off a 92px
                       cell at the card's edge otherwise spills into open air. */}
                   {editFilters && (
-                    <IconButton
-                      icon={<X size={12} />}
-                      className="size-6 shrink-0 order-last"
-                      onClick={() => setFilters((prev) => prev.filter((x) => x.id !== f.id))}
-                      title={`Remove ${f.value}`}
-                    />
+                    <span className="order-last">
+                      <RemoveButton
+                        onClick={() => setFilters((prev) => prev.filter((x) => x.id !== f.id))}
+                        title={`Remove ${f.value}`}
+                      />
+                    </span>
                   )}
                   <span className={cx(
                     'shrink-0 w-[92px] [&>span]:block [&>span>button]:w-full [&>span>button]:justify-between',
@@ -580,7 +629,7 @@ export function SearchConversational() {
       data-usage="scorecard"
     >
       <div className="flex items-center gap-2 mb-1">
-        <span className="text-sm font-medium text-[var(--fg1)]">Scorecard</span>
+        <span className="text-base font-bold text-[var(--fg1)]">Scorecard</span>
         <ScorecardInfo />
         <span className="text-xs text-[var(--fg3)] tabular-nums">
           {done
@@ -651,26 +700,55 @@ export function SearchConversational() {
     </Card>
   );
 
+  /* The one number on this screen that answers "did my filters do something
+     sane". It was 20px of body text sharing a flex row with a large button,
+     which outweighed it — so the only feedback the configuration gives was the
+     quietest thing in the card. It now leads at display size, in the brand
+     green, with its denominator underneath it rather than in tertiary text. */
+  /* The two cards below are the search criteria. Nothing on the screen said so:
+     they were titled "Filters" and "Scorecard" at the same size and weight as
+     the rows inside them, with no statement of how the two differ — which is
+     the whole thesis of this screen. Filters decide who is in the pool;
+     the scorecard decides the order of whoever survives. */
+  const criteriaHeading = (
+    <div className="flex items-baseline gap-3 flex-wrap">
+      <h2 className="text-xl font-bold text-[var(--fg1)]">Search criteria</h2>
+      <p className="text-sm text-[var(--fg2)] m-0">
+        <span className="font-medium text-[var(--fg1)]">Filters</span> decide who is eligible ·{' '}
+        <span className="font-medium text-[var(--fg1)]">the scorecard</span> decides the order
+      </p>
+    </div>
+  );
+
   const reachAndBegin = (
-    <div className="flex items-center gap-4 flex-wrap" data-usage="reach">
-      <div>
-        <div className="flex items-baseline gap-1.5">
-          <span className="text-xl font-bold text-[var(--fg1)] tabular-nums">≈ 1,180</span>
-          <span className="text-sm text-[var(--fg2)]">profiles match</span>
-        </div>
-        <div className="text-xs text-[var(--fg3)] mt-0.5">
-          {ready ? 'Scores all 8,412 profiles · about 2 minutes' : `Answer ${BLOCKING.length - answered} more to begin`}
+    <div className="flex items-center gap-5 flex-wrap" data-usage="reach">
+      <div className="flex items-baseline gap-2.5">
+        <span className="text-[40px] leading-[44px] font-black text-[var(--brand-ink)] tabular-nums">
+          {SEARCH.eligible.toLocaleString()}
+        </span>
+        <div className="min-w-0">
+          <div className="text-base font-bold text-[var(--fg1)]">profiles are eligible</div>
+          <div className="text-sm text-[var(--fg2)] tabular-nums">
+            of {SEARCH.profilesScanned.toLocaleString()} scanned · your filters cut{' '}
+            {Math.round((1 - SEARCH.eligible / SEARCH.profilesScanned) * 100)}%
+          </div>
         </div>
       </div>
-      <Button
-        size="lg"
-        className="ml-auto"
-        disabled={!ready}
-        icon={<MagnifyingGlass size={16} weight="bold" />}
-        onClick={begin}
-      >
-        Begin search
-      </Button>
+      <div className="ml-auto flex flex-col items-end gap-1.5">
+        <Button
+          size="lg"
+          disabled={!ready}
+          icon={<MagnifyingGlass size={16} weight="bold" />}
+          onClick={begin}
+        >
+          Begin search
+        </Button>
+        <span className="text-xs text-[var(--fg2)]">
+          {ready
+            ? 'Ranks all of them · about 2 minutes'
+            : `Answer ${BLOCKING.length - answered} more to begin`}
+        </span>
+      </div>
     </div>
   );
 
@@ -697,7 +775,7 @@ export function SearchConversational() {
               {/* The brief stays on screen through the pass: the lit phrase is
                   the only evidence that a row came from something you wrote. */}
               <Card className="px-3 py-2.5">
-                <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] mb-1">
+                <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] mb-1">
                   Your brief
                 </div>
                 <div className="text-sm text-[var(--fg2)] leading-[20px] max-w-[92ch]">
@@ -708,6 +786,7 @@ export function SearchConversational() {
 
             {/* The reason for the act: the same two-column configuration act 3
                 ends on, at the full width of the window. */}
+            <div className="pt-1">{criteriaHeading}</div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
               {filtersCard}
               {scorecardCard}
@@ -741,7 +820,7 @@ export function SearchConversational() {
               <button
                 onClick={() => setStepsOpen((o) => !o)}
                 aria-expanded={stepsOpen}
-                className="flex-1 min-w-0 flex items-center gap-2.5 px-3.5 py-2.5 text-left cursor-pointer transition-colors duration-150 hover:bg-[var(--beige-50)] active:bg-[var(--beige-100)]"
+                className="flex-1 min-w-0 flex items-center gap-2.5 px-3.5 py-2.5 text-left cursor-pointer transition-colors duration-150 hover:bg-[var(--beige-100)] active:bg-[var(--beige-100)]"
               >
                 <span className="size-6 rounded-full bg-[var(--ai-magic)] text-white flex items-center justify-center shrink-0">
                   <Sparkle size={12} weight="fill" />
@@ -766,7 +845,7 @@ export function SearchConversational() {
             </div>
 
             {stepsOpen && (
-              <div className="border-t border-[var(--beige-300)] bg-[var(--beige-50)] px-3.5 py-3">
+              <div className="border-t border-[var(--border-color)] bg-[var(--bg3)] px-3.5 py-3">
                 <ol className="space-y-2.5">
                   {steps.map((s, i) => (
                     <li key={s.label} className={cx('flex gap-2.5', REVEAL)} style={delay(i)}>
@@ -784,7 +863,11 @@ export function SearchConversational() {
             )}
           </Card>
 
-          <Card className="p-3.5 animate-[emaRise_240ms_var(--ease-out-quint)_60ms_backwards]">{reachAndBegin}</Card>
+          <Card className="p-5 animate-[emaRise_240ms_var(--ease-out-quint)_60ms_backwards]">{reachAndBegin}</Card>
+
+          <div className="pt-2 animate-[emaRise_240ms_var(--ease-out-quint)_80ms_backwards]">
+            {criteriaHeading}
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
             <div className="animate-[emaRise_240ms_var(--ease-out-quint)_100ms_backwards]">{filtersCard}</div>
@@ -808,7 +891,7 @@ function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; c
         'h-7 px-2.5 rounded-pill border text-xs font-medium cursor-pointer transition-colors duration-150',
         on
           ? 'bg-[var(--brand-primary)] border-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:bg-[var(--brand-primary-accent)]'
-          : 'bg-white border-[var(--beige-500)] text-[var(--fg2)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-50)] active:bg-[var(--beige-200)]',
+          : 'bg-white border-[var(--beige-500)] text-[var(--fg2)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-100)] active:bg-[var(--beige-200)]',
       )}
     >
       {on && <Check size={10} weight="bold" className="inline mr-1" />}

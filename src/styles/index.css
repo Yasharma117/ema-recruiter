@@ -25,6 +25,9 @@
   --color-blue-600: var(--blue-600);
   --color-blue-900: var(--blue-900);
   --color-border-color: var(--border-color);
+  --color-border-subtle: var(--border-subtle);
+  --color-app-chrome: var(--app-chrome);
+  --color-brand-ink: var(--brand-ink);
   --color-brand-primary: var(--brand-primary);
   --color-brand-primary-accent: var(--brand-primary-accent);
   --color-brand-primary-active: var(--brand-primary-active);
@@ -212,15 +215,15 @@
    wash resolves rather than loops, so it never competes with the cursor. */
 .wash { position: absolute; inset: 0; overflow: hidden; pointer-events: none; z-index: 0;
   --bristle: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='800' height='300' preserveAspectRatio='none'%3E%3Cfilter id='b'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.42' numOctaves='3' seed='7'/%3E%3CfeColorMatrix type='matrix' values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.25 0 0 0 0.12'/%3E%3C/filter%3E%3Crect width='800' height='300' filter='url(%23b)'/%3E%3C/svg%3E");
-  --sage: 143, 191, 159; --sage-lift: 169, 214, 184;
-  --cream: 231, 233, 200; --straw: 238, 231, 162;
-  --sand: 224, 218, 198; --sand-deep: 200, 192, 165; --lilac: 235, 223, 236; }
+  --w1: 143, 191, 159; --w1-lift: 169, 214, 184;
+  --w2: 231, 233, 200; --w2-lift: 238, 231, 162;
+  --w3: 224, 218, 198; --w3-lift: 200, 192, 165; --w4: 235, 223, 236; }
 
 /* No corner is ever bare canvas, wherever the bristles happen to land. */
 .wash-base { position: absolute; inset: -10%;
   background: linear-gradient(118deg,
-    rgba(var(--sage), .30) 0%, rgba(var(--cream), .26) 34%,
-    rgba(var(--sand), .24) 62%, rgba(var(--lilac), .26) 100%); }
+    rgba(var(--w1), .30) 0%, rgba(var(--w2), .26) 34%,
+    rgba(var(--w3), .24) 62%, rgba(var(--w4), .26) 100%); }
 
 .wash-s { position: absolute; left: -26vw; width: 152vw; will-change: transform, opacity;
   animation: washSweep 1600ms var(--ease-out-quint) both; }
@@ -235,10 +238,10 @@
 .wash-2 { height: 210px; top: 15vh; transform: rotate(-16deg); --r: -16deg; animation-delay: 180ms }
 .wash-3 { height: 330px; top: 46vh; transform: rotate(-11deg); --r: -11deg; animation-delay: 340ms }
 .wash-4 { height: 190px; top: 76vh; transform: rotate(-15deg); --r: -15deg; animation-delay: 500ms }
-.wash-1 .wash-i { background: linear-gradient(92deg, rgba(var(--sage),0), rgba(var(--sage),.58) 26%, rgba(var(--sage-lift),.40) 68%, rgba(var(--sage-lift),0)) }
-.wash-2 .wash-i { background: linear-gradient(92deg, rgba(var(--cream),0), rgba(var(--cream),.82) 32%, rgba(var(--straw),.46) 74%, rgba(var(--straw),0)) }
-.wash-3 .wash-i { background: linear-gradient(92deg, rgba(var(--sand),0), rgba(var(--sand),.70) 24%, rgba(var(--sand-deep),.38) 66%, rgba(var(--sand-deep),0)) }
-.wash-4 .wash-i { background: linear-gradient(92deg, rgba(var(--lilac),0), rgba(var(--lilac),.62) 38%, rgba(var(--lilac),0)) }
+.wash-1 .wash-i { background: linear-gradient(92deg, rgba(var(--w1),0), rgba(var(--w1),.58) 26%, rgba(var(--w1-lift),.40) 68%, rgba(var(--w1-lift),0)) }
+.wash-2 .wash-i { background: linear-gradient(92deg, rgba(var(--w2),0), rgba(var(--w2),.82) 32%, rgba(var(--w2-lift),.46) 74%, rgba(var(--w2-lift),0)) }
+.wash-3 .wash-i { background: linear-gradient(92deg, rgba(var(--w3),0), rgba(var(--w3),.70) 24%, rgba(var(--w3-lift),.38) 66%, rgba(var(--w3-lift),0)) }
+.wash-4 .wash-i { background: linear-gradient(92deg, rgba(var(--w4),0), rgba(var(--w4),.62) 38%, rgba(var(--w4),0)) }
 
 /* Keeps the wash off the words: this sits behind a heading and an input. */
 .wash-veil { position: absolute; inset: 0; background: radial-gradient(56% 46% at 50% 46%,
@@ -315,3 +318,113 @@
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ai-magic) 34%, transparent);
   animation: emaFade 140ms var(--ease-out-quint) both;
 }
+
+/* ---------------------------------------------------------------------------
+   The navigation rail — Ema's own.
+
+   Sampled from the product rather than invented: every value below was pulled
+   off a screen recording of Ema's app and then matched to the nearest token in
+   this stylesheet, which it turned out to be within a rounding error of.
+
+       sampled            nearest token        distance
+       #1d212b  ground    gray-960  #1f2430      6
+       #dcdee3  at rest   gray-400  #d8dce5      5
+       #8b9099  labels    gray-800  #838998     11
+       #1d7c3b  green     green-800 #1f8844     15
+
+   So the rail is in the design system, not beside it.
+
+   The part I had wrong was never the ground — it was the selection. Ema does
+   not tint or mark the selected row, it lifts it onto a white pill and turns
+   the label green: the one place in the whole product where the page's surface
+   colour appears inside the chrome, which is exactly why it reads as "you are
+   here" at a glance and a 3px bar never did.
+
+   Flat fill. No gradient.
+--------------------------------------------------------------------------- */
+.rail {
+  --rail-base: var(--gray-960);     /* #1f2430 */
+  --rail-raised: #252933;           /* nested blocks, lifted off the ground */
+  --rail-fg: var(--gray-400);       /* 11.3:1 — nav at rest */
+  --rail-fg-faint: var(--gray-700); /*  6.4:1 — section labels */
+  --rail-sel-bg: var(--white);      /* the pill */
+  --rail-sel-fg: var(--green-900);  /*  5.5:1 on the pill */
+  --rail-line: rgba(255, 255, 255, 0.08);
+  --rail-hover: rgba(255, 255, 255, 0.06);
+
+  background: var(--rail-base);
+  border-right: 1px solid rgba(0, 0, 0, 0.30);
+  color: var(--rail-fg);
+}
+
+/* The base stylesheet underlines any <a> on hover and paints it brand green,
+   which is right for a link in prose and wrong for sixteen navigation rows. */
+.rail a:hover { text-decoration: none; }
+
+/* The mark ships as green-800, which is 2.6:1 on this ground. Ema's own dark
+   surfaces carry a white wordmark. */
+.rail-logo { filter: brightness(0) invert(1); }
+
+/* ---------------------------------------------------------------------------
+   The wash, repainted per outreach stage.
+
+   Same construct as the cold start — the identical four dry-brush bands, masks,
+   sweep and grain. Only the seven hue slots change, so every stage is the same
+   painting in a different key rather than six unrelated backgrounds. The sand
+   band (--w3) is deliberately held constant across all of them: it is the paper
+   the composition is painted on, and keeping it still is what stops the strip
+   reading as a different screen each time you filter.
+
+   Hue follows position in the funnel, not the stage's name:
+
+       queued      warm sand     nothing has left the building yet
+       sent        blue          out in the world, informational
+       replied     aqua          warming — blue moving toward green
+       scheduling  amber         a time is pending
+       outcome     green         resolved
+       blocked     red           off-ramp, not a step forward
+
+   Every value is a -300/-400 step from the Ema scales, so the wash cannot
+   drift out of the palette.
+--------------------------------------------------------------------------- */
+.wash[data-tone="queued"] {
+  --w1: 227, 225, 219; --w1-lift: 217, 215, 207;   /* beige-400 / 500 */
+  --w2: 255, 234, 182; --w2-lift: 255, 223, 144;   /* yellow-300 / 400 */
+  --w4: 234, 232, 227;                              /* beige-300 */
+}
+.wash[data-tone="sent"] {
+  --w1: 215, 237, 255; --w1-lift: 197, 228, 253;   /* blue-300 / 400 */
+  --w2: 176, 215, 247; --w2-lift: 213, 237, 255;   /* blue-500 */
+  --w4: 231, 229, 255;                              /* purple-300 */
+}
+.wash[data-tone="replied"] {
+  --w1: 216, 239, 238; --w1-lift: 206, 231, 229;   /* blue-300 x green-300 */
+  --w2: 215, 237, 255; --w2-lift: 197, 233, 204;   /* blue-300 / green-400 */
+  --w4: 216, 241, 220;                              /* green-300 */
+}
+.wash[data-tone="scheduling"] {
+  --w1: 255, 220, 191; --w1-lift: 255, 206, 166;   /* orange-300 / 400 */
+  --w2: 255, 234, 182; --w2-lift: 255, 223, 144;   /* yellow-300 / 400 */
+  --w4: 254, 194, 152;                              /* orange-500 */
+}
+.wash[data-tone="outcome"] {
+  --w1: 216, 241, 220; --w1-lift: 197, 233, 204;   /* green-300 / 400 */
+  --w2: 174, 222, 183; --w2-lift: 216, 241, 220;   /* green-500 / 300 */
+  --w4: 197, 233, 204;                              /* green-400 */
+}
+.wash[data-tone="blocked"] {
+  --w1: 255, 219, 215; --w1-lift: 255, 204, 197;   /* red-300 / 400 */
+  --w2: 255, 220, 191; --w2-lift: 255, 187, 180;   /* orange-300 / red-500 */
+  --w4: 255, 204, 197;                              /* red-400 */
+}
+
+/* Behind working UI rather than an empty page, so it runs at about half
+   strength and drops the centre veil — there is no heading to keep clear here,
+   and a bright core under a dense board reads as a rendering fault. */
+.wash-ambient { opacity: .5; }
+.wash-ambient .wash-veil { display: none; }
+
+/* Filtering is a re-tint, not a repaint: the bands hold their position and
+   cross-fade to the new key. */
+.wash-ambient .wash-i,
+.wash-ambient .wash-base { transition: background var(--dur-slow) var(--ease-out-quint); }

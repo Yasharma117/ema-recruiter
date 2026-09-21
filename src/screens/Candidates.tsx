@@ -238,9 +238,9 @@ export function CandidatesScreen() {
 
   return (
     <AppShell screen="candidates" breadcrumbs={['Searches', SEARCH.name]} actions={headerActions}>
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col bg-[var(--app-background)]">
         {/* Counts + view switch */}
-        <div className="shrink-0 px-5 pt-3.5 pb-2 flex items-center gap-4 flex-wrap">
+        <div className="shrink-0 px-5 pt-3.5 pb-2 flex items-center gap-4 flex-wrap bg-[var(--app-chrome)]">
           <Tabs
             variant="segmented"
             value={view}
@@ -278,7 +278,7 @@ export function CandidatesScreen() {
         </div>
 
         {/* Source tabs + filter chips */}
-        <div className="shrink-0 px-5 pb-2 flex items-center gap-3 flex-wrap border-b border-[var(--beige-300)]">
+        <div className="shrink-0 px-5 flex items-center gap-3 flex-wrap bg-[var(--app-chrome)] border-b border-[var(--beige-400)]">
           <Tabs
             value={sourceTab}
             onChange={setSourceTab}
@@ -289,7 +289,7 @@ export function CandidatesScreen() {
               { id: 'internal', label: 'Internal talent', count: counts.internal },
             ]}
           />
-          <div className="ml-auto flex items-center gap-2 py-1.5">
+          <div className="ml-auto flex items-center gap-2">
             <CandidateSearch
               resultCount={ranked.length}
               filters={LIST_FILTERS}
@@ -327,7 +327,7 @@ export function CandidatesScreen() {
                 'transition-colors duration-150 active:bg-[var(--beige-200)]',
                 railOpen
                   ? 'bg-[var(--success-bg-subtle)] border-[var(--brand-primary)] text-[var(--success-text)] hover:bg-[var(--green-200)]'
-                  : 'bg-white border-[var(--beige-500)] text-[var(--fg2)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-50)]',
+                  : 'bg-white border-[var(--beige-500)] text-[var(--fg2)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-100)]',
               )}
             >
               <Ranking size={14} weight={railOpen ? 'bold' : 'regular'} />
@@ -339,7 +339,10 @@ export function CandidatesScreen() {
         {/* Main + rail */}
         <div className="flex-1 min-h-0 flex">
           <div className="relative flex-1 min-w-0 flex flex-col">
-          <div className="flex-1 min-h-0 overflow-y-auto" data-usage="score">
+          {/* The rows used to sit directly on the page background, with nothing
+              between <main> and <table> declaring a surface — so the table was
+              not an object, it was ink on the canvas. */}
+          <div className="flex-1 min-h-0 overflow-y-auto bg-[var(--bg2)]" data-usage="score">
             {forced === 'ats-disconnected' && atsBanner && (
               <div className="px-5 pt-3">
                 <Banner
@@ -419,11 +422,13 @@ export function CandidatesScreen() {
           </div>
 
           {railOpen && (
-            <aside aria-label="Ranking controls" data-usage="rail" className="w-[300px] shrink-0 border-l border-[var(--beige-300)] bg-[var(--beige-50)] overflow-y-auto">
-              <div className="p-4">
-                <div className="flex items-center justify-between mb-1">
-                  <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">Ranking controls</div>
-                  <IconButton icon={<X size={14} />} onClick={() => setRailOpen(false)} title="Hide" />
+            <aside aria-label="Ranking controls" data-usage="rail" className="w-[300px] shrink-0 border-l border-[var(--beige-400)] bg-[var(--app-chrome)] overflow-y-auto">
+              <div className="px-4 pb-4">
+                {/* Same 36px header row as the table's <thead>, so this label
+                    and "Candidate" sit on one line across the screen. */}
+                <div className="h-9 flex items-center justify-between">
+                  <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]">Ranking controls</div>
+                  <IconButton icon={<X size={14} />} onClick={() => setRailOpen(false)} title="Hide" className="-mr-1.5" />
                 </div>
                 <p className="text-xs text-[var(--fg2)] mb-3 leading-[17px]">
                   Re-weighting re-ranks the list immediately. Required criteria count double.
@@ -493,7 +498,7 @@ export function CandidatesScreen() {
 
         {/* Bulk selection bar */}
         {selected.size > 0 && (
-          <div data-usage="bulk" className="shrink-0 bg-[var(--beige-960)] text-white px-4 py-2.5 flex items-center gap-3 flex-wrap animate-[emaRise_200ms_var(--ease-out-quint)]">
+          <div data-usage="bulk" className="shrink-0 bg-[var(--beige-960)] text-white px-5 py-2.5 flex items-center gap-3 flex-wrap animate-[emaRise_200ms_var(--ease-out-quint)]">
             <span className="text-sm font-medium">
               {selected.size} selected
               {selected.size > ranked.length && ` across ${Math.ceil(selected.size / 50)} pages`}
@@ -802,6 +807,8 @@ function CandidateTable({
     <table className="w-full border-collapse table-fixed">
       <colgroup>
         <col style={{ width: 44 }} />
+        {/* Gmail's order: select, flag, then who it is. */}
+        <col style={{ width: 34 }} />
         <col style={{ width: railOpen ? '23%' : '19%' }} />
         <col style={{ width: railOpen ? '14%' : '12%' }} />
         {!railOpen && <col style={{ width: '13%' }} />}
@@ -809,22 +816,25 @@ function CandidateTable({
         {/* Assessment takes the slack: it is the only cell holding a sentence. */}
         <col />
         <col style={{ width: railOpen ? 150 : 164 }} />
-        <col style={{ width: 44 }} />
       </colgroup>
-      <thead className="sticky top-0 z-10 bg-[var(--beige-50)]">
-        <tr className="border-b border-[var(--beige-400)]">
+      <thead className="sticky top-0 z-10 bg-[var(--beige-100)]">
+        <tr className="border-b border-[var(--beige-500)]">
           <th scope="col" className="pl-5 py-2.5 text-left">
             <Checkbox checked={allSelected} onChange={onToggleAll} label="Select all" />
           </th>
+          <th scope="col"><span className="sr-only">Shortlist</span></th>
           {(railOpen
             ? ['Candidate', 'Company', 'Score', 'Assessment', 'Outreach stage']
             : ['Candidate', 'Company', 'Role', 'Score', 'Assessment', 'Outreach stage']
-          ).map((h) => (
-            <th key={h} className="py-2 pr-3 text-left text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">
+          ).map((h, i, all) => (
+            <th key={h} className={cx(
+              'py-2.5 text-left text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]',
+              i === all.length - 1 ? 'pr-5' : 'pr-3',
+            )}>
               {h}
             </th>
           ))}
-          <th className="pr-5"><span className="sr-only">Shortlist</span></th>
+
         </tr>
       </thead>
       <tbody>
@@ -855,11 +865,30 @@ function CandidateTable({
                 'focus-visible:[&>td:first-child]:shadow-[inset_3px_0_0_var(--brand-primary)]',
               )}
             >
-              <td className="pl-5 pt-4 pb-2.5 align-top" onClick={(e) => e.stopPropagation()}>
+              <td className="pl-5 py-2.5 align-middle" onClick={(e) => e.stopPropagation()}>
                 <Checkbox checked={selected.has(candidate.id)} onChange={() => onToggle(candidate.id)} label={`Select ${candidate.name}`} />
               </td>
 
-              <td className="py-2.5 pr-3 align-top">
+              {/* Gmail's star: select, flag, then who it is. It also stops
+                  hiding until hover — a row you have already shortlisted and a
+                  row you have not should differ at rest, and reaching for a
+                  control that is not drawn yet is the thing hover-reveal costs
+                  you across 110 rows. */}
+              <td className="py-2.5 align-middle" onClick={(e) => e.stopPropagation()}>
+                <IconButton
+                  icon={<BookmarkSimple size={16} weight={isShort ? 'fill' : 'regular'} />}
+                  onClick={() => onShortlist(candidate.id)}
+                  title={isShort ? 'Remove from shortlist' : 'Shortlist'}
+                  className={cx(
+                    'size-7',
+                    isShort
+                      ? 'text-[var(--brand-primary)] hover:text-[var(--brand-primary-accent)]'
+                      : 'text-[var(--fg3)] hover:text-[var(--brand-primary)]',
+                  )}
+                />
+              </td>
+
+              <td className="py-2.5 pr-3 align-middle">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Avatar name={candidate.name} size={28} tone={candidate.avatarTone} />
                   <div className="min-w-0">
@@ -894,24 +923,24 @@ function CandidateTable({
                 </div>
               </td>
 
-              <td className="py-2.5 pr-3 align-top">
+              <td className="py-2.5 pr-3 align-middle">
                 <div className="text-sm leading-[18px] text-[var(--fg1)] truncate">{candidate.company}</div>
                 <div className="text-xs leading-4 text-[var(--fg3)] mt-0.5">{candidate.companyTenure}</div>
               </td>
 
               {!railOpen && (
-                <td className="py-2.5 pr-3 align-top">
+                <td className="py-2.5 pr-3 align-middle">
                   <div className="text-sm leading-[18px] text-[var(--fg2)] line-clamp-2">{candidate.title}</div>
                 </td>
               )}
 
-              <td className="py-2.5 pr-3 align-top" onClick={(e) => e.stopPropagation()}>
+              <td className="py-2.5 pr-3 align-middle" onClick={(e) => e.stopPropagation()}>
                 <ScoreCell candidate={candidate} criteria={criteria} />
               </td>
 
               {/* Signals ride with the sentence they qualify: two sparse columns
                   read as a hole in the table, one dense column reads as a row. */}
-              <td className="py-2.5 pr-3 align-top">
+              <td className="py-2.5 pr-3 align-middle">
                 <div className="flex items-start gap-1.5 min-w-0">
                   {candidate.signals.length > 0 && (
                     <span className="flex items-center gap-1 shrink-0 pt-px">
@@ -941,24 +970,15 @@ function CandidateTable({
                 </div>
               </td>
 
-              <td className="py-2.5 pr-3 align-top">
+              <td className="py-2.5 pr-5 align-middle">
                 {rec
                   ? <Badge variant={STATES[rec.state as OutreachState].tone as any} size="sm">{STATES[rec.state as OutreachState].label}</Badge>
-                  : <span className="text-xs leading-[18px] text-[var(--fg3)] inline-block">Not contacted</span>}
+                  /* The most common value in this column was the only one not
+                     rendered as a badge — so the default state read as missing
+                     data rather than as a state. */
+                  : <Badge variant="muted" size="sm">Not contacted</Badge>}
               </td>
 
-              <td className="pr-5 py-2.5 align-top" onClick={(e) => e.stopPropagation()}>
-                <IconButton
-                  icon={<BookmarkSimple size={15} weight={isShort ? 'fill' : 'regular'} />}
-                  onClick={() => onShortlist(candidate.id)}
-                  title={isShort ? 'Remove from shortlist' : 'Shortlist'}
-                  className={cx(
-                    isShort
-                      ? 'text-[var(--brand-primary)] hover:text-[var(--brand-primary-accent)]'
-                      : 'opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100',
-                  )}
-                />
-              </td>
             </tr>
           );
         })}

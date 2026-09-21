@@ -13,6 +13,13 @@ export const SEARCH = {
     "Fintech or another regulated domain is a big plus because they'll be working " +
     "under model governance. Bay Area or US remote. Not looking for pure researchers.",
   profilesScanned: 8412,
+  /**
+   * How many of the scanned profiles clear the filters — the number the search
+   * screen leads on, because it is the only feedback that the filters did
+   * something sane before committing two minutes to a run. Lived as a literal
+   * in the layout's JSX, where it was invisible next to `profilesScanned`.
+   */
+  eligible: 1180,
   profilesScored: 847,
   matched: 112,
 };

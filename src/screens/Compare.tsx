@@ -118,7 +118,7 @@ export function CompareModal({
         <div className="mx-5 mb-3 rounded-lg border border-[var(--ai-magic-border)] bg-[var(--ai-magic-bg-subtle)] p-3 shrink-0">
           <div className="flex items-center gap-1.5 mb-1.5">
             <Sparkle size={13} weight="fill" className="text-[var(--ai-magic-text)]" />
-            <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--ai-magic-text)]">
+            <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--ai-magic-text)]">
               Ema's read · Review before deciding
             </span>
           </div>
@@ -130,13 +130,13 @@ export function CompareModal({
         <table className="w-full border-collapse">
           <thead className="sticky top-0 z-20">
             <tr>
-              <th className="sticky left-0 z-30 bg-[var(--beige-50)] border-b border-r border-[var(--beige-400)] p-3 text-left w-[240px]">
-                <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">Criterion</span>
+              <th className="sticky left-0 z-30 bg-[var(--beige-100)] border-b border-r border-[var(--beige-400)] p-3 text-left w-[240px]">
+                <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]">Criterion</span>
               </th>
               {candidates.map((c) => {
                 const r = rank(c, criteria);
                 return (
-                  <th key={c.id} className="bg-[var(--beige-50)] border-b border-l border-[var(--beige-400)] p-3 text-left align-top"
+                  <th key={c.id} className="bg-[var(--beige-100)] border-b border-l border-[var(--beige-400)] p-3 text-left align-top"
                     style={{ width: colWidth, minWidth: colWidth }}>
                     <div className="flex items-start gap-2">
                       <Avatar name={c.name} size={28} tone={c.avatarTone} />
@@ -159,7 +159,7 @@ export function CompareModal({
           <tbody>
             {differencesFirst && (
               <tr>
-                <td colSpan={candidates.length + 1} className="sticky left-0 bg-[var(--beige-100)] px-3 py-1.5 text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] border-t border-[var(--beige-300)]">
+                <td colSpan={candidates.length + 1} className="sticky left-0 bg-[var(--beige-100)] px-3 py-1.5 text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] border-t border-[var(--beige-300)]">
                   Where they differ ({differing.length})
                 </td>
               </tr>
@@ -171,7 +171,7 @@ export function CompareModal({
                 <tr>
                   <td colSpan={candidates.length + 1} className="sticky left-0 bg-[var(--beige-100)] border-t border-[var(--beige-300)] p-0">
                     <button onClick={() => setSameOpen((o) => !o)}
-                      className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] hover:text-[var(--fg1)] cursor-pointer">
+                      className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] hover:text-[var(--fg1)] cursor-pointer">
                       {sameOpen ? <CaretDown size={11} weight="bold" /> : <CaretRight size={11} weight="bold" />}
                       Where they're the same ({same.length})
                     </button>
@@ -183,8 +183,8 @@ export function CompareModal({
 
             {/* Coverage pinned at the bottom — equal scores on unequal evidence
                 is a different situation, and nothing else reveals it. */}
-            <tr className="border-t-2 border-[var(--beige-500)] bg-[var(--beige-50)]">
-              <th scope="row" className="text-left p-3 sticky left-0 bg-[var(--beige-50)] border-r border-[var(--beige-300)]">
+            <tr className="border-t-2 border-[var(--beige-500)] bg-[var(--beige-100)]">
+              <th scope="row" className="text-left p-3 sticky left-0 bg-[var(--beige-100)] border-r border-[var(--beige-300)]">
                 <div className="text-sm font-medium text-[var(--fg1)]">Coverage</div>
                 <div className="text-xs text-[var(--fg3)] mt-0.5">Criteria with evidence</div>
               </th>

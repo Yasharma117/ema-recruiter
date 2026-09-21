@@ -24,7 +24,7 @@ export function Landing() {
       <div className="h-full overflow-y-auto bg-[var(--app-background)]">
         <div className="min-h-full flex flex-col items-center justify-center px-6 py-10">
           <div className="w-full max-w-[560px]">
-            <h1 className="text-[26px] leading-[32px] font-medium text-[var(--fg1)] animate-[emaRise_240ms_var(--ease-out-quint)_backwards]">
+            <h1 className="text-[30px] leading-[36px] font-bold text-[var(--fg1)] animate-[emaRise_240ms_var(--ease-out-quint)_backwards]">
               Yash's Ema assignment
             </h1>
 
@@ -38,7 +38,7 @@ export function Landing() {
                 >
                   View the final screens
                 </Button>
-                <span className="text-xs text-[var(--fg3)]">The finished flow, end to end.</span>
+                <span className="text-xs text-[var(--fg2)]">The finished flow, end to end.</span>
               </div>
 
               <div className="flex flex-col gap-2">
@@ -51,7 +51,7 @@ export function Landing() {
                 >
                   Explore layout variations
                 </Button>
-                <span className="text-xs text-[var(--fg3)]">The ones we went over on Friday's call.</span>
+                <span className="text-xs text-[var(--fg2)]">The ones we went over on Friday's call.</span>
               </div>
             </div>
 

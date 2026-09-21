@@ -215,7 +215,7 @@ export function OutreachScreen() {
                 )}
               >
                 <span className={cx('text-base font-bold tabular-nums',
-                  g.id === 'needs-you' && g.total > 0 ? 'text-[var(--brand-primary)]' : 'text-[var(--fg1)]')}>
+                  g.id === 'needs-you' && g.total > 0 ? 'text-[var(--brand-ink)]' : 'text-[var(--fg1)]')}>
                   {g.total}
                 </span>
                 <span className="text-xs text-[var(--fg2)]">{g.label}</span>
