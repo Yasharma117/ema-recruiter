@@ -196,7 +196,10 @@
 .ema-row-enter { animation: emaIn 250ms var(--ease-out-quint) backwards; }
 
 /* Skeleton shimmer, left to right, beige-400 -> beige-50 */
-.ema-skeleton { position: relative; overflow: hidden; background: var(--beige-200); }
+/* --bone lets a skeleton sitting on a tinted panel step down a shade; on white
+   the default is already a visible bar. beige-200 on bg3 was 1.07:1 — a bone
+   you cannot see is just a gap. */
+.ema-skeleton { position: relative; overflow: hidden; background: var(--bone, var(--beige-300)); }
 .ema-skeleton::after {
   content: ''; position: absolute; inset: 0;
   background: linear-gradient(90deg, transparent, var(--beige-50), transparent);
@@ -343,14 +346,15 @@
    Flat fill. No gradient.
 --------------------------------------------------------------------------- */
 .rail {
-  --rail-base: var(--gray-960);     /* #1f2430 */
-  --rail-raised: #252933;           /* nested blocks, lifted off the ground */
-  --rail-fg: var(--gray-400);       /* 11.3:1 — nav at rest */
-  --rail-fg-faint: var(--gray-700); /*  6.4:1 — section labels */
+  /* The shared dark surface; only the selected pill is the rail's own. */
+  --rail-base: var(--surface-dark);
+  --rail-raised: var(--surface-dark-raised);
+  --rail-fg: var(--surface-dark-fg);
+  --rail-fg-faint: var(--surface-dark-fg-faint);
   --rail-sel-bg: var(--white);      /* the pill */
   --rail-sel-fg: var(--green-900);  /*  5.5:1 on the pill */
-  --rail-line: rgba(255, 255, 255, 0.08);
-  --rail-hover: rgba(255, 255, 255, 0.06);
+  --rail-line: var(--surface-dark-line);
+  --rail-hover: var(--surface-dark-hover);
 
   background: var(--rail-base);
   border-right: 1px solid rgba(0, 0, 0, 0.30);
@@ -418,11 +422,20 @@
   --w4: 255, 204, 197;                              /* red-400 */
 }
 
-/* Behind working UI rather than an empty page, so it runs at about half
-   strength and drops the centre veil — there is no heading to keep clear here,
-   and a bright core under a dense board reads as a rendering fault. */
-.wash-ambient { opacity: .5; }
+/* Behind working UI rather than an empty page: drops the centre veil, because
+   there is no heading to keep clear here and a bright core under a dense board
+   reads as a rendering fault. */
+.wash-ambient { opacity: .85; }
 .wash-ambient .wash-veil { display: none; }
+
+/* The cold start sizes its bands in vh because it owns the whole viewport. The
+   strip is ~120px tall, so three of the four bands would land outside it and
+   the composition would come apart. Same four bands, measured against their
+   container instead. */
+.wash-ambient .wash-1 { height: 64%; top: -20%; }
+.wash-ambient .wash-2 { height: 46%; top:  14%; }
+.wash-ambient .wash-3 { height: 72%; top:  42%; }
+.wash-ambient .wash-4 { height: 42%; top:  72%; }
 
 /* Filtering is a re-tint, not a repaint: the bands hold their position and
    cross-fade to the new key. */

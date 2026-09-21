@@ -119,7 +119,7 @@ export function OutreachScreen() {
                     </div>
                     {s.connected && (
                       <div className="mt-1 ml-[19px]">
-                        <div className="h-1 rounded-full bg-[var(--beige-300)] overflow-hidden">
+                        <div className="h-1 rounded-full bg-[var(--beige-500)] overflow-hidden">
                           <div className={cx('h-full rounded-full', s.usedToday / s.dailyCap > 0.8 ? 'bg-[var(--warning)]' : 'bg-[var(--green-800)]')}
                             style={{ width: `${(s.usedToday / s.dailyCap) * 100}%` }} />
                         </div>
@@ -329,10 +329,10 @@ export function OutreachScreen() {
         </div>
 
         {checked.size > 0 && (
-          <div className="shrink-0 bg-[var(--beige-960)] text-white px-4 py-2.5 flex items-center gap-3 animate-[emaRise_200ms_var(--ease-out-quint)]">
+          <div className="shrink-0 bg-[var(--surface-dark)] text-[var(--surface-dark-fg-strong)] px-4 py-2.5 flex items-center gap-3 animate-[emaRise_200ms_var(--ease-out-quint)]">
             <span className="text-sm font-medium">{checked.size} selected</span>
-            <button onClick={() => setChecked(new Set())} className="text-xs text-[var(--beige-600)] hover:text-white cursor-pointer">Clear</button>
-            <div className="w-px h-5 bg-[var(--beige-930)]" />
+            <button onClick={() => setChecked(new Set())} className="text-xs text-[var(--surface-dark-fg)] hover:text-white cursor-pointer">Clear</button>
+            <div className="w-px h-5 bg-[var(--surface-dark-line)]" />
             {([
               ['Approve and send', 'review-and-send'],
               ['Pause', null],
@@ -347,7 +347,7 @@ export function OutreachScreen() {
                   setChecked(new Set());
                 }}
                 className={cx('text-sm px-2.5 py-1 rounded-sm cursor-pointer transition-colors',
-                  label === 'Cancel outreach' ? 'text-[var(--red-600)] hover:bg-[var(--beige-930)]' : 'hover:bg-[var(--beige-930)]')}
+                  label === 'Cancel outreach' ? 'text-[var(--red-600)] hover:bg-[var(--surface-dark-hover)]' : 'hover:bg-[var(--surface-dark-hover)]')}
               >
                 {label}
               </button>

@@ -702,7 +702,7 @@ export function ToastStack({ toasts, onDismiss }: { toasts: ToastMsg[]; onDismis
           key={t.id}
           aria-hidden={exiting.some((x) => x.id === t.id) || undefined}
           className={cx(
-            'flex items-center gap-3 bg-[var(--beige-960)] text-white rounded-md pl-3.5 pr-2 h-10 shadow-[var(--shadow-lg)] text-sm',
+            'flex items-center gap-3 bg-[var(--surface-dark)] text-[var(--surface-dark-fg-strong)] rounded-md pl-3.5 pr-2 h-10 shadow-[var(--shadow-lg)] text-sm',
             exiting.some((x) => x.id === t.id)
               // Back down through the edge it rose from, so dismissing reads as
               // the reverse of arriving rather than as a deletion.
@@ -714,10 +714,10 @@ export function ToastStack({ toasts, onDismiss }: { toasts: ToastMsg[]; onDismis
           {t.action && (
             <button
               onClick={() => { t.action!.onClick(); onDismiss(t.id); }}
-              /* Raw greens on purpose: this sits on a dark beige-960 toast, and
-                 the DS has no on-dark brand tint — --brand-primary is tuned for
-                 light surfaces and drops to 2.8:1 here. */
-              className="font-bold text-[var(--green-400)] hover:text-[var(--green-300)] cursor-pointer px-1.5"
+              /* --brand-primary is tuned for light surfaces and drops to
+                 2.8:1 here, so affordances on the dark surface use its own
+                 accent — the same mint the rail uses, at 8.6:1. */
+              className="font-bold text-[var(--surface-dark-accent)] hover:text-[var(--green-400)] cursor-pointer px-1.5"
             >
               {t.action.label}
             </button>

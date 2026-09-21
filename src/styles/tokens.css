@@ -171,6 +171,26 @@
   /** The rail and the top bar. Lighter than the canvas, so it reads as chrome. */
   --app-chrome: var(--beige-50);
 
+  /** The surface the panels sit on — a step under the canvas, so the inset
+      around the rail and the working area reads as depth rather than a gap. */
+  --app-frame: var(--beige-300);
+
+  /* ── The product's one dark surface ──
+     The rail, the bulk-action bar and the toast are the same material and had
+     drifted apart: the rail was sampled from Ema's own app (cool graphite)
+     while the bars and toasts were still on warm beige-960, so two blacks with
+     different temperatures appeared on screen at once. Defined once here and
+     referenced everywhere, including by .rail. Ratios are against --surface-dark. */
+  --surface-dark: var(--gray-960);            /* #1f2430 */
+  --surface-dark-raised: #252933;             /* nested blocks on the dark */
+  --surface-dark-fg: var(--gray-400);         /* 11.3:1 — labels at rest */
+  --surface-dark-fg-strong: var(--white);     /* 15.5:1 — the primary line */
+  --surface-dark-fg-faint: var(--gray-700);   /*  6.4:1 — secondary/meta */
+  --surface-dark-accent: var(--green-600);    /*  8.6:1 — affordances on dark */
+  --surface-dark-line: rgba(255, 255, 255, 0.12);
+  --surface-dark-hover: rgba(255, 255, 255, 0.08);
+  --surface-dark-active: rgba(255, 255, 255, 0.16);
+
   /* Text aliases (fg1 = primary text, fg2 = secondary, fg3 = tertiary).
 
      fg2 and fg3 were both beige-930 — the accessibility pass that lifted fg3

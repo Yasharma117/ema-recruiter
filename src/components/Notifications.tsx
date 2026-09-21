@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { ArrowRight, Bell, CalendarBlank, CaretRight, X } from '@phosphor-icons/react';
 import { useStore, type Notif } from '../store';
 import { Avatar, Button, IconButton, cx } from './ui';
@@ -64,15 +64,33 @@ export function TimeChange({ from, to, size = 'sm' }: {
 }
 
 export function NotificationBell() {
-  const { notifications, markNotificationsRead, setFocusCandidate } = useStore();
+  const { notifications, alertDismissed, markNotificationsRead, setFocusCandidate } = useStore();
   const [open, setOpen] = React.useState(false);
   const nav = useNavigate();
+  const loc = useLocation();
   // IconButton does not forward refs, and ui.tsx is not ours to change — the
   // wrapper is close enough to get focus back where it came from.
   const wrap = React.useRef<HTMLSpanElement>(null);
   const panel = React.useRef<HTMLDivElement>(null);
 
   const unread = notifications.filter((n) => !n.read).length;
+
+  /* The bell is the trail, not the announcement.
+     The alert strip is already the loud version of the newest event, so while
+     it is on screen the same event does not also need a dot eight pixels from
+     it — that is one thing said twice, and it teaches you to ignore the bell.
+     The dot is for unread work the strip is not currently showing: everything
+     older than the open strip, and everything once the strip is closed. The
+     count in the panel never changes; only this marker waits its turn.
+
+     Deferring has to depend on the strip being *rendered*, not merely on a
+     notification existing: AppShell suppresses the strip on Outreach, so
+     deferring by default left that event announced in neither place. */
+  const stripVisible = loc.pathname !== '/outreach';
+  const onStrip = stripVisible
+    ? notifications.find((n) => !alertDismissed.includes(n.id))
+    : undefined;
+  const trailing = notifications.filter((n) => !n.read && n.id !== onStrip?.id).length;
 
   /* Assistive tech hears the arrival the same moment the dot appears — polite,
      so it waits for the user to finish what they were reading. */
@@ -119,15 +137,20 @@ export function NotificationBell() {
         aria-haspopup="dialog"
         title={unread ? `Notifications, ${unread} unread` : 'Notifications'}
       />
-      {unread > 0 && (
+      {trailing > 0 && (
         // Announces itself once, on the render where it appears, then holds
         // still. A badge that keeps moving is nagging on a screen kept open
         // all day.
+        //
+        // Positioned against the glyph, not the button. IconButton is 36px and
+        // the bell inside it is 16px, so a dot pinned to the button's corner
+        // sits ~10px clear of the icon in open space and reads as a stray mark
+        // rather than as a badge on the bell.
         <span
           aria-hidden
           className={cx(
-            'absolute -top-0.5 -right-0.5 size-2 rounded-full bg-[var(--warning)]',
-            'ring-2 ring-[var(--beige-50)] animate-[emaPop_200ms_var(--ease-out-quint)]',
+            'absolute top-[7px] right-[7px] size-2 rounded-full bg-[var(--warning)]',
+            'ring-2 ring-[var(--app-chrome)] animate-[emaPop_200ms_var(--ease-out-quint)]',
           )}
         />
       )}

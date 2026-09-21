@@ -32,7 +32,7 @@ const OUTCOMES: { id: Outcome; label: string; consequence: string; tone: string 
     id: 'not-interested',
     label: 'Not interested',
     consequence: 'Closes and stops all follow-ups',
-    tone: 'data-[on=true]:bg-[var(--beige-960)] data-[on=true]:border-[var(--beige-960)] data-[on=true]:text-white',
+    tone: 'data-[on=true]:bg-[var(--surface-dark)] data-[on=true]:border-[var(--surface-dark)] data-[on=true]:text-[var(--surface-dark-fg-strong)]',
   },
 ];
 

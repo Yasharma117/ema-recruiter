@@ -317,7 +317,7 @@ export function SearchScreen() {
                             {prev.toLocaleString()} → {f.poolAfter!.toLocaleString()}
                           </span>
                         </div>
-                        <div className="h-1 rounded-full bg-[var(--beige-300)] mt-1 overflow-hidden">
+                        <div className="h-1 rounded-full bg-[var(--beige-500)] mt-1 overflow-hidden">
                           <div className="h-full rounded-full bg-[var(--success)]" style={{ width: `${pct}%` }} />
                         </div>
                       </div>

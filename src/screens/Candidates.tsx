@@ -18,6 +18,7 @@ import { ScoreCell } from '../components/Score';
 import { CandidateDrawer } from './CandidateDrawer';
 import { CompareModal } from './Compare';
 import { PreflightSheet } from './Preflight';
+import { CompanyLogo } from '../components/CompanyLogo';
 import { useStore } from '../store';
 import { CandidateSearch, NoQueryMatch, type ListFilter } from '../components/CandidateSearch';
 import { WeightScale } from '../components/SearchControls';
@@ -498,16 +499,16 @@ export function CandidatesScreen() {
 
         {/* Bulk selection bar */}
         {selected.size > 0 && (
-          <div data-usage="bulk" className="shrink-0 bg-[var(--beige-960)] text-white px-5 py-2.5 flex items-center gap-3 flex-wrap animate-[emaRise_200ms_var(--ease-out-quint)]">
+          <div data-usage="bulk" className="shrink-0 bg-[var(--surface-dark)] text-[var(--surface-dark-fg-strong)] px-5 py-2.5 flex items-center gap-3 flex-wrap animate-[emaRise_200ms_var(--ease-out-quint)]">
             <span className="text-sm font-medium">
               {selected.size} selected
               {selected.size > ranked.length && ` across ${Math.ceil(selected.size / 50)} pages`}
             </span>
             <button onClick={() => setSelected(new Set())}
-              className="text-xs text-[var(--beige-600)] rounded-xs px-1 py-0.5 hover:text-white active:text-[var(--beige-500)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white focus-visible:shadow-none">
+              className="text-xs text-[var(--surface-dark-fg)] rounded-xs px-1 py-0.5 hover:text-[var(--surface-dark-fg-strong)] active:text-[var(--surface-dark-fg-faint)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white focus-visible:shadow-none">
               Clear
             </button>
-            <div className="w-px h-5 bg-[var(--beige-930)]" />
+            <div className="w-px h-5 bg-[var(--surface-dark-line)]" />
             {[
               { label: 'Shortlist', run: () => { store.shortlistMany([...selected]); toast(`${selected.size} added to shortlist`, { label: 'Undo', onClick: () => store.removeFromShortlist([...selected]) }); setSelected(new Set()); } },
               { label: 'Remove', run: () => { store.removeFromShortlist([...selected]); toast(`${selected.size} removed from shortlist`); setSelected(new Set()); } },
@@ -517,7 +518,7 @@ export function CandidatesScreen() {
               <button key={a.label} onClick={a.run}
                 className={cx(
                   'text-sm px-2.5 py-1 rounded-sm cursor-pointer transition-colors',
-                  'hover:bg-[var(--beige-930)] active:bg-[var(--beige-900)]',
+                  'hover:bg-[var(--surface-dark-hover)] active:bg-[var(--surface-dark-active)]',
                   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white focus-visible:shadow-none',
                 )}>
                 {a.label}
@@ -810,7 +811,7 @@ function CandidateTable({
         {/* Gmail's order: select, flag, then who it is. */}
         <col style={{ width: 34 }} />
         <col style={{ width: railOpen ? '23%' : '19%' }} />
-        <col style={{ width: railOpen ? '14%' : '12%' }} />
+        <col style={{ width: railOpen ? '16%' : '14%' }} />
         {!railOpen && <col style={{ width: '13%' }} />}
         <col style={{ width: 118 }} />
         {/* Assessment takes the slack: it is the only cell holding a sentence. */}
@@ -924,8 +925,25 @@ function CandidateTable({
               </td>
 
               <td className="py-2.5 pr-3 align-middle">
-                <div className="text-sm leading-[18px] text-[var(--fg1)] truncate">{candidate.company}</div>
-                <div className="text-xs leading-4 text-[var(--fg3)] mt-0.5">{candidate.companyTenure}</div>
+                {/* Mirrors the candidate cell beside it: mark, then a two-line
+                    block. A logo is spotted down a column where a name has to
+                    be read. */}
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <CompanyLogo name={candidate.company} size={26} />
+                  <div className="min-w-0">
+                    {/* The same two-tier treatment as the candidate beside it:
+                        the name at medium weight so it is the thing you land
+                        on, the tenure a size and a tone below. It was 400 —
+                        the same weight as its own sub-line, which left the
+                        cell with no first line. */}
+                    <div className="text-sm font-medium leading-[18px] text-[var(--fg1)] truncate">
+                      {candidate.company}
+                    </div>
+                    <div className="text-xs leading-4 text-[var(--fg3)] truncate">
+                      {candidate.companyTenure}
+                    </div>
+                  </div>
+                </div>
               </td>
 
               {!railOpen && (

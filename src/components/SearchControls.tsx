@@ -260,7 +260,7 @@ export function WeightScale({
               'h-5 w-[13px] rounded-xs cursor-pointer transition-colors duration-150',
               n <= value
                 ? 'bg-[var(--brand-primary)] hover:bg-[var(--brand-primary-accent)] active:bg-[var(--brand-primary-active)]'
-                : 'bg-[var(--beige-300)] hover:bg-[var(--beige-500)] active:bg-[var(--beige-600)]',
+                : 'bg-[var(--beige-400)] hover:bg-[var(--beige-600)] active:bg-[var(--beige-700)]',
             )}
           />
         ))}

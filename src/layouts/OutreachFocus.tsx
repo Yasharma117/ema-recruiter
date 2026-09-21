@@ -1,11 +1,10 @@
 import React from 'react';
 import {
-  Check, Sparkle, ArrowRight, CaretDown, PaperPlaneTilt, Warning, Kanban, Rows,
+  Check, Sparkle, ArrowRight, PaperPlaneTilt, Warning, Kanban, Rows,
 } from '@phosphor-icons/react';
 import type { OutreachRecord, OutreachState } from '../lib/types';
 import { STATES, nextAction, isHalted, type ActionId } from '../lib/outreach';
 import { SEARCH } from '../data/search';
-import { Wash } from '../components/Wash';
 import { Avatar, Badge, Banner, Button, Checkbox, EmptyState, ToastStack, cx } from '../components/ui';
 import { OutreachDetail } from '../components/OutreachDetail';
 import { AppShell } from '../components/AppShell';
@@ -295,15 +294,7 @@ export function OutreachFocusBoard() {
 
   return (
     <AppShell breadcrumbs={['Searches', SEARCH.name, 'Outreach']} screen="outreach">
-      <div className="relative h-full flex flex-col">
-        {/* Filtering to a stage repaints the screen in that stage's key. The
-            header already says *what* is filtered; the wash says *where in the
-            funnel you are standing* without spending a row on it — and because
-            hue runs sand → blue → aqua → amber → green, the answer arrives
-            before the label is read. Blocked is red, and looks like the
-            off-ramp it is. Nothing is painted until a stage is chosen, so the
-            colour is feedback for the click, not permanent decoration. */}
-        {colFilter && <Wash key={colFilter} tone={colFilter} ambient />}
+      <div className="h-full flex flex-col">
         {disconnected && forced === 'sender-disconnected' && (
           <div className="shrink-0 px-5 pt-3">
             <Banner
@@ -325,6 +316,7 @@ export function OutreachFocusBoard() {
             boardOpen && 'flex-1 min-h-0 flex flex-col',
           )}
         >
+
 
           <div className="flex items-center gap-3 flex-wrap mb-2 shrink-0">
             {allQueue.length ? (
@@ -394,7 +386,8 @@ export function OutreachFocusBoard() {
                 <div
                   key={col.id}
                   className={cx(
-                    'flex-1 min-w-0 flex flex-col rounded-lg border p-2 transition-colors duration-150 ease-[var(--ease-out-quint)]',
+                    'flex-1 min-w-0 flex flex-col rounded-lg border p-2',
+                    'transition-colors duration-200 ease-[var(--ease-out-quint)]',
                     active
                       ? 'bg-[var(--beige-200)] border-[var(--beige-600)]'
                       : 'bg-[var(--beige-100)] border-[var(--beige-300)]',
@@ -414,8 +407,11 @@ export function OutreachFocusBoard() {
                       disabled={!rows.length}
                       title={rows.length ? `Filter the queue to ${col.label.toLowerCase()}` : undefined}
                       className={cx(
-                        'flex items-center gap-1.5 min-w-0 text-left',
-                        rows.length ? 'cursor-pointer group' : 'cursor-default',
+                        'flex items-center gap-1.5 min-w-0 text-left rounded-sm px-1.5 py-1 -mx-1',
+                        'transition-colors duration-150',
+                        rows.length
+                          ? 'cursor-pointer group hover:bg-[var(--beige-300)]'
+                          : 'cursor-default',
                       )}
                     >
                       <span className={cx(
@@ -550,7 +546,7 @@ export function OutreachFocusBoard() {
                 <span className="text-sm font-medium text-[var(--fg1)]">
                   {reviewIds ? 'Your selection' : activeCol ? activeCol.label : 'Needs you'}
                 </span>
-                <div className="flex-1 h-1.5 rounded-full bg-[var(--beige-300)] overflow-hidden">
+                <div className="flex-1 h-1.5 rounded-full bg-[var(--beige-500)] overflow-hidden">
                   <div
                     /* No transition: this bar is driven by j/k/Enter, and a
                        width animation is both a layout property and a 300ms
@@ -710,8 +706,12 @@ export function OutreachFocusBoard() {
                 </div>
 
                 {queue.length > 1 && (
-                  <div className="flex items-center justify-center gap-1.5 mt-3 text-xs text-[var(--fg3)]">
-                    <CaretDown size={11} />
+                  /* A count of what is left in the queue, not a control. It
+                     carried a caret, which is the one glyph in this product
+                     that means "press me to open something" — so it read as a
+                     dropdown that does nothing when clicked. The sentence says
+                     it on its own. */
+                  <div className="text-center mt-3 text-xs text-[var(--fg3)]">
                     {queue.length - cursor - 1} more after this
                   </div>
                 )}
@@ -726,16 +726,16 @@ export function OutreachFocusBoard() {
             data-usage="bulk"
             role="status"
             aria-live="polite"
-            className="shrink-0 bg-[var(--beige-960)] text-white px-5 py-2.5 flex items-center gap-3 flex-wrap animate-[emaRise_200ms_var(--ease-out-quint)]"
+            className="shrink-0 bg-[var(--surface-dark)] text-[var(--surface-dark-fg-strong)] px-5 py-2.5 flex items-center gap-3 flex-wrap animate-[emaRise_200ms_var(--ease-out-quint)]"
           >
             <span className="text-sm font-medium">{selected.size} selected</span>
             <button
               onClick={() => setSelected(new Set())}
-              className="text-xs text-[var(--beige-600)] rounded-xs px-1 py-0.5 hover:text-white active:text-[var(--beige-500)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white focus-visible:shadow-none"
+              className="text-xs text-[var(--surface-dark-fg)] rounded-xs px-1 py-0.5 hover:text-[var(--surface-dark-fg-strong)] active:text-[var(--surface-dark-fg-faint)] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white focus-visible:shadow-none"
             >
               Clear
             </button>
-            <div className="w-px h-5 bg-[var(--beige-930)]" />
+            <div className="w-px h-5 bg-[var(--surface-dark-line)]" />
             {bulkActions.length ? bulkActions.map((a) => (
               <button
                 key={a.id}
@@ -744,21 +744,21 @@ export function OutreachFocusBoard() {
                 aria-label={`${a.label}. Applies to ${a.ids.length} of ${selected.size} selected.`}
                 className={cx(
                   'inline-flex items-center gap-1.5 text-sm px-2.5 py-1 rounded-sm cursor-pointer transition-colors',
-                  'hover:bg-[var(--beige-930)] active:bg-[var(--beige-900)]',
+                  'hover:bg-[var(--surface-dark-hover)] active:bg-[var(--surface-dark-active)]',
                   'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white focus-visible:shadow-none',
                 )}
               >
                 {a.label}
-                <span className="tabular-nums text-[var(--beige-600)]">{a.ids.length}</span>
+                <span className="tabular-nums text-[var(--surface-dark-fg)]">{a.ids.length}</span>
               </button>
             )) : (
-              <span className="text-sm text-[var(--beige-600)]">
+              <span className="text-sm text-[var(--surface-dark-fg)]">
                 Nothing in this selection can be done in bulk.
               </span>
             )}
             {/* Honest about the remainder: a count on a button is only half the truth. */}
             {bulkActions.length > 0 && covered < selected.size && (
-              <span className="text-xs text-[var(--beige-600)]">
+              <span className="text-xs text-[var(--surface-dark-fg)]">
                 {selected.size - covered} of {selected.size} have nothing you can do in bulk.
               </span>
             )}

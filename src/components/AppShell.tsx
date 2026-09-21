@@ -2,7 +2,7 @@ import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import {
   MagnifyingGlass, UsersThree, PaperPlaneTilt, PlugsConnected, Gear, ChatText,
-  SidebarSimple, Question, CaretRight, ArrowCounterClockwise, FileText, CaretDoubleLeft,
+  SidebarSimple, Question, CaretRight, ArrowCounterClockwise, FileText,
 } from '@phosphor-icons/react';
 import { Avatar, IconButton, cx } from './ui';
 import { nextAction } from '../lib/outreach';
@@ -10,6 +10,33 @@ import { useStore } from '../store';
 import { NotificationAlert, NotificationBell } from './Notifications';
 import { LayoutPicker, useMode, type Mode } from '../layouts/LayoutPicker';
 import type { ScreenId } from '../layouts/usage';
+
+/**
+ * The rail's own state, kept outside React.
+ *
+ * Every screen renders its own AppShell, so each navigation unmounts this
+ * component and mounts a new one — which reset the rail to full width on every
+ * click. Collapsing it was therefore something you had to do again on each
+ * page, which is the same module-cache-plus-sessionStorage shape `useMode`
+ * already uses in LayoutPicker for exactly this reason.
+ */
+type NavState = 'full' | 'icons';
+const NAV_KEY = 'ema.nav';
+let navCached: NavState | null = null;
+
+function readNav(): NavState {
+  if (navCached) return navCached;
+  try {
+    const v = sessionStorage.getItem(NAV_KEY);
+    if (v === 'full' || v === 'icons') navCached = v;
+  } catch { /* private window — the module cache still works */ }
+  return navCached ?? 'full';
+}
+
+function writeNav(v: NavState) {
+  navCached = v;
+  try { sessionStorage.setItem(NAV_KEY, v); } catch { /* see readNav */ }
+}
 
 const NAV = [
   { to: '/search', icon: MagnifyingGlass, label: 'Searches' },
@@ -49,9 +76,9 @@ function RailIconButton({
 }
 
 function Sidebar({
-  collapsed, onToggle, onHide, screen, mode,
+  collapsed, onToggle, screen, mode,
 }: {
-  collapsed: boolean; onToggle: () => void; onHide: () => void;
+  collapsed: boolean; onToggle: () => void;
   screen?: ScreenId; mode: Mode;
 }) {
   const { outreach, notifications } = useStore();
@@ -64,6 +91,22 @@ function Sidebar({
   // Both badges count work waiting on a person, not totals.
   const drafts = outreach.filter((r) => r.messages.some((m) => m.draft)).length;
   const badges: Record<string, number> = { '/outreach': needsYou, '/messages': drafts };
+
+  /* Outreach is a dot, not a count.
+     A number there answered "how many", which is a question the queue itself
+     answers the moment you open it. What the rail is for is "has something
+     changed that I need to look at now" — one bit, so one dot, and yellow
+     because that is the colour this product already uses for waiting work.
+     Messages keeps its number: a draft count is a size you act on in bulk.
+
+     The dot has to know its ground. Bright yellow is 10.2:1 on the rail and
+     1.53:1 on the white pill of the selected row, which is exactly why the
+     selected state looked washed out — so the fill darkens and the ring
+     follows the surface underneath it rather than always punching rail. */
+  const dotOnly = (to: string) => to === '/outreach';
+  const dotTone = (active: boolean) => (active
+    ? 'bg-[var(--yellow-930)] ring-[var(--rail-sel-bg)]'   /* 4.5:1 on white */
+    : 'bg-[var(--yellow-800)] ring-[var(--rail-base)]');   /* 10.2:1 on rail */
   return (
     <aside
       aria-label="Primary"
@@ -72,7 +115,7 @@ function Sidebar({
          is the better answer anyway: you pressed it, and the labels inside
          appear and disappear outright regardless, so the eased width was
          sliding a rail around content that had already finished changing. */
-      className="rail shrink-0 h-full flex flex-col"
+      className="rail shrink-0 h-full flex flex-col rounded-lg overflow-hidden"
       style={{ width: w }}
     >
       <div className={cx(
@@ -86,10 +129,11 @@ function Sidebar({
         {!collapsed && <RailIconButton icon={<SidebarSimple size={16} />} onClick={onToggle} title="Collapse to icons" />}
       </div>
 
+      {/* One control, and it is the way back out. Two buttons on a 72px rail
+          made the narrow state feel like a settings panel. */}
       {collapsed && (
-        <div className="flex items-center justify-center gap-0.5 pt-2 pb-1 shrink-0">
-          <RailIconButton icon={<SidebarSimple size={14} />} onClick={onToggle} title="Expand sidebar" className="size-7" />
-          <RailIconButton icon={<CaretDoubleLeft size={13} />} onClick={onHide} title="Hide sidebar" className="size-7" />
+        <div className="flex items-center justify-center pt-2 pb-1 shrink-0">
+          <RailIconButton icon={<SidebarSimple size={15} />} onClick={onToggle} title="Expand sidebar" className="size-8" />
         </div>
       )}
 
@@ -104,7 +148,7 @@ function Sidebar({
                hue before it is answered by reading. */
             className={({ isActive }) => cx(
               'flex items-center gap-3 rounded-md mb-0.5 text-sm transition-colors duration-150 relative',
-              collapsed ? 'h-10 justify-center' : 'px-2.5 py-2',
+              collapsed ? 'size-10 mx-auto justify-center' : 'px-2.5 py-2',
               isActive
                 ? 'bg-[var(--rail-sel-bg)] text-[var(--rail-sel-fg)] font-medium'
                 : 'text-[var(--rail-fg)] hover:bg-[var(--rail-hover)] hover:text-[var(--white)]',
@@ -117,10 +161,11 @@ function Sidebar({
                     <span
                       key={to === '/outreach' && urgent ? 'urgent' : 'calm'}
                       className={cx(
-                        'absolute -top-1 -right-1.5 size-2.5 rounded-full ring-2 ring-[var(--rail-base)]',
-                        to === '/outreach' && urgent
-                          ? 'bg-[var(--warning)] animate-[emaPop_200ms_var(--ease-out-quint)]'
-                          : 'bg-[var(--rail-fg)]',
+                        'absolute -top-1 -right-1 size-2.5 rounded-full ring-2',
+                        dotOnly(to)
+                          ? dotTone(isActive)
+                          : cx('bg-[var(--rail-fg)]', isActive ? 'ring-[var(--rail-sel-bg)]' : 'ring-[var(--rail-base)]'),
+                        to === '/outreach' && urgent && 'animate-[emaPop_200ms_var(--ease-out-quint)]',
                       )}
                     />
                   )}
@@ -129,20 +174,34 @@ function Sidebar({
                 {!collapsed && badges[to] > 0 && (
                   // Keyed on the tone so the badge remounts — and so plays its
                   // one entrance — at the moment urgency arrives, and not again.
-                  <span
-                    key={to === '/outreach' && urgent ? 'urgent' : 'calm'}
-                    className={cx(
+                  dotOnly(to) ? (
+                    <span
+                      key={urgent ? 'urgent' : 'calm'}
+                      className={cx(
+                        'size-2.5 rounded-full ring-2 shrink-0',
+                        dotTone(isActive),
+                        urgent && 'animate-[emaPop_200ms_var(--ease-out-quint)]',
+                      )}
+                    />
+                  ) : (
+                    <span className={cx(
                       'inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-pill text-xs font-bold tabular-nums',
-                      to === '/outreach' && urgent
-                        ? 'bg-[var(--warning-bg)] text-[var(--warning-text)] border border-[var(--warning-border)] animate-[emaPop_200ms_var(--ease-out-quint)]'
+                      isActive
+                        ? 'bg-[var(--rail-sel-fg)] text-[var(--rail-sel-bg)]'
                         : 'bg-[var(--rail-fg)] text-[var(--rail-base)]',
-                    )}
-                  >
-                    {badges[to]}
-                  </span>
+                    )}>
+                      {badges[to]}
+                    </span>
+                  )
                 )}
-                {!collapsed && to === '/outreach' && urgent && (
-                  <span className="sr-only">, needs attention</span>
+                {/* The dot replaced a number, so the number has to survive
+                    somewhere: a marker with no text leaves a screen reader
+                    hearing "Outreach" and nothing else. Rendered in both rail
+                    widths, since the collapsed rail has no label either. */}
+                {badges[to] > 0 && dotOnly(to) && (
+                  <span className="sr-only">
+                    , {badges[to]} waiting on you{urgent ? ', needs attention' : ''}
+                  </span>
                 )}
               </>
             )}
@@ -155,7 +214,7 @@ function Sidebar({
           <NavLink key={to} to={to} title={collapsed ? label : undefined}
             className={({ isActive }) => cx(
               'flex items-center gap-3 rounded-md mb-0.5 text-sm transition-colors duration-150',
-              collapsed ? 'h-10 justify-center' : 'px-2.5 py-2',
+              collapsed ? 'size-10 mx-auto justify-center' : 'px-2.5 py-2',
               isActive
                 ? 'bg-[var(--rail-sel-bg)] text-[var(--rail-sel-fg)] font-medium'
                 : 'text-[var(--rail-fg)] hover:bg-[var(--rail-hover)] hover:text-[var(--white)]',
@@ -213,10 +272,10 @@ function Sidebar({
 }
 
 export function AppShell({
-  breadcrumbs, title, actions, children, onExpandSidebar, screen, chrome = 'on',
+  breadcrumbs, title, actions, children, screen, chrome = 'on',
 }: {
   breadcrumbs?: string[]; title?: string; actions?: React.ReactNode;
-  children: React.ReactNode; onExpandSidebar?: () => void;
+  children: React.ReactNode;
   /** Enables the A/B/C layout picker and the usage overlay for this screen. */
   screen?: ScreenId;
   /**
@@ -226,22 +285,19 @@ export function AppShell({
    */
   chrome?: 'on' | 'hidden' | 'enter';
 }) {
-  /** full → icons → hidden. Hiding is a real state: a demo gets screenshotted. */
-  const [nav, setNav] = React.useState<'full' | 'icons' | 'hidden'>('full');
+  const [nav, setNavState] = React.useState<NavState>(readNav);
+  const setNav = React.useCallback((v: NavState) => { setNavState(v); writeNav(v); }, []);
   const collapsed = nav === 'icons';
   const { resetDemo } = useStore();
   const loc = useLocation();
   const mode = useMode();
-
-  // Collapse the sidebar on the compare-heavy candidate screen at narrow widths.
-  React.useEffect(() => { onExpandSidebar?.(); }, [loc.pathname]);
 
   if (chrome === 'hidden') {
     return <main id="main" className="h-full overflow-hidden">{children}</main>;
   }
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full gap-2 p-2 bg-[var(--app-frame)]">
       {/* First tab stop on every page: 18 nav stops otherwise. */}
       <a
         href="#main"
@@ -252,33 +308,26 @@ export function AppShell({
       {/* The rail fades; its contents do the travelling. Sliding the <aside>
           itself leaves a sliver of page background at the left edge, because
           its layout width is reserved the moment it mounts. */}
-      {nav === 'hidden' && (
-        <IconButton
-          icon={<SidebarSimple size={16} />}
-          onClick={() => setNav('full')}
-          title="Show sidebar"
-          className="fixed left-2.5 top-2.5 z-50 bg-white border border-[var(--beige-400)] shadow-[var(--shadow-sm)]"
-        />
-      )}
-      <div className={cx('contents', nav === 'hidden' && 'hidden', chrome === 'enter' && cx(
+      <div className={cx('contents', chrome === 'enter' && cx(
         '[&>aside]:animate-[emaFade_200ms_var(--ease-out-quint)_backwards]',
         '[&>aside>*]:animate-[emaSlideL_260ms_var(--ease-out-quint)_backwards]',
       ))}>
         <Sidebar
           collapsed={collapsed}
           onToggle={() => setNav(collapsed ? 'full' : 'icons')}
-          onHide={() => setNav('hidden')}
           screen={screen}
           mode={mode}
         />
       </div>
-      <div className="flex-1 min-w-0 flex flex-col">
+      {/* The working area is its own panel, so the app reads as two objects on
+          a surface rather than one edge-to-edge sheet. overflow-hidden is what
+          makes the corners actually clip the header and the table inside. */}
+      <div className="flex-1 min-w-0 flex flex-col rounded-lg border border-[var(--border-color)] bg-[var(--app-background)] overflow-hidden">
         <header className={cx(
           'h-14 shrink-0 flex items-center gap-3.5 px-5 bg-[var(--app-chrome)] border-b border-[var(--beige-400)]',
           chrome === 'enter' && 'animate-[emaIn_200ms_var(--ease-out-quint)_60ms_backwards]',
         )}>
           {collapsed && <IconButton icon={<SidebarSimple size={16} />} onClick={() => setNav('full')} title="Expand sidebar" />}
-          {nav === 'hidden' && <span className="w-7 shrink-0" aria-hidden />}
           <div className="flex-1 min-w-0 flex items-center gap-2">
             {breadcrumbs?.length ? (
               <div className="flex items-center gap-1.5 min-w-0">

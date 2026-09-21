@@ -124,6 +124,13 @@ function Written({ full, shown }: { full: string; shown: string }) {
   );
 }
 
+/** Deterministic per id: a bone that changed width on re-render would flicker. */
+const boneWidth = (id: string, lo = 46, range = 36) => {
+  let h = 7;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) % 997;
+  return `${lo + (h % range)}%`;
+};
+
 const STAGGER = 50;
 const STAGGER_CAP = 8;
 const REVEAL = 'animate-[emaReveal_320ms_var(--ease-out-quint)_backwards]';
@@ -137,8 +144,22 @@ const LEAVE = 'animate-[emaOut_120ms_var(--ease-out-quint)_forwards]';
 const STEP = 150;
 /** The beat between answering a question and Ema asking the next one. */
 const ASK_MS = 340;
-/** The pause before the first row: Ema is reading, not yet writing. */
-const READING_MS = 400;
+
+/* ── The skeleton pass ──
+   Before Ema writes anything it lays out the shape of what it is about to
+   write: every section and every line, boned, cascading down the two cards.
+   Only once the wireframe is standing does content start replacing it.
+
+   The point is that the structure is knowable before the content is. Ema has
+   read the brief, so it already knows there will be ten filters in three
+   groups and six criteria — showing that first makes the fill read as parsing
+   a document rather than as a page loading, because you can see the size and
+   shape of the answer before any of it arrives. */
+const BONE_STAGGER = 45;
+/** The scorecard's bones start a beat after the filters', as its card does. */
+const BONE_OFFSET = 120;
+/** The pause before the first row: the bones are still arriving. */
+const READING_MS = 880;
 /** A name is written over this long, whatever its length. */
 const TYPE_MS = 120;
 /** The beat between the last verdict landing and act 2 handing over. */
@@ -333,18 +354,18 @@ export function SearchConversational() {
           <Wash />
           <div className="relative z-10 min-h-full flex flex-col items-center justify-center px-6 py-10">
             <div className={cx('w-full max-w-[620px]', leaving && LEAVE)} data-usage="role">
-              <div className="flex items-center gap-2.5 mb-5 animate-[emaIn_200ms_var(--ease-out-quint)_backwards]">
+              <div className="flex items-center justify-center gap-2.5 mb-5 animate-[emaIn_200ms_var(--ease-out-quint)_backwards]">
                 <img src="/logo-mark.svg" alt="" height={22} style={{ height: 22 }} />
                 <span className="text-sm text-[var(--fg3)]">New search</span>
               </div>
 
-              <h1 className="text-[26px] leading-[32px] font-medium text-[var(--fg1)] animate-[emaRise_240ms_var(--ease-out-quint)_60ms_backwards]">
+              <h1 className="text-[26px] leading-[32px] font-medium text-[var(--fg1)] text-center animate-[emaRise_240ms_var(--ease-out-quint)_60ms_backwards]">
                 What role are you hiring for?
               </h1>
               {/* The lede explains what Ema is about to do. Once it has done it
                   and is asking back, the explanation is in its own words. */}
               {!briefIn && (
-                <p className="text-sm text-[var(--fg2)] mt-2 leading-[20px] animate-[emaRise_240ms_var(--ease-out-quint)_120ms_backwards]">
+                <p className="text-sm text-[var(--fg2)] mt-2 leading-[20px] text-center animate-[emaRise_240ms_var(--ease-out-quint)_120ms_backwards]">
                   Describe it however you like, or paste the job description. Ema only asks about
                   the things that decide who is eligible — everything else it infers, and you can
                   change all of it afterwards.
@@ -449,19 +470,24 @@ export function SearchConversational() {
                           search will run on, and the whole point is that you get
                           to argue with them first. So the arc is stated: Ema
                           drafts, you vet, then you run. */}
-                      <div className="flex items-center gap-2.5 flex-wrap">
-                        <Button
-                          icon={<Sparkle size={14} weight="fill" />}
-                          disabled={unanswered.length > 0}
-                          onClick={send}
-                        >
-                          Build search criteria
-                        </Button>
-                        {unanswered.length > 0 && (
-                          <span className="text-xs text-[var(--fg2)]">Pick {sentenceList(unanswered)}</span>
-                        )}
-                      </div>
-                      <p className="text-xs text-[var(--fg2)] leading-[18px] mt-2.5 mb-0 max-w-[56ch]">
+                      {/* Full measure: this is the only action in the act, and
+                          a small button floating at the left of a 620px column
+                          read as one option among several. */}
+                      <Button
+                        block
+                        size="lg"
+                        icon={<Sparkle size={16} weight="fill" />}
+                        disabled={unanswered.length > 0}
+                        onClick={send}
+                      >
+                        Build search criteria
+                      </Button>
+                      {unanswered.length > 0 && (
+                        <div className="text-xs text-[var(--fg2)] text-center mt-2">
+                          Pick {sentenceList(unanswered)}
+                        </div>
+                      )}
+                      <p className="text-xs text-[var(--fg2)] leading-[18px] mt-2.5 mb-0 text-center">
                         Ema turns your brief into{' '}
                         <span className="font-medium text-[var(--fg1)]">filters</span> that decide who is
                         eligible and a <span className="font-medium text-[var(--fg1)]">scorecard</span> that
@@ -510,20 +536,33 @@ export function SearchConversational() {
       <div className="space-y-3">
         {grouped.map((g) => (
           <div key={g.mode}>
-            {/* Keeps its space but stays unseen until the group has something
-                in it — the count would otherwise give the answer away early. */}
-            <div className={cx(
-              'flex items-center gap-1.5 mb-1 px-1.5',
-              !done && !g.rows.some((f) => hasLanded(f.id)) && 'invisible',
-            )}>
-              <span className={cx('size-2 rounded-full shrink-0', MODE_DOT[g.mode])} />
-              <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]">
-                {MODE_COPY[g.mode].label}
-              </span>
-              <span className="text-xs text-[var(--fg3)] tabular-nums">
-                {done ? g.rows.length : g.rows.filter((f) => hasLanded(f.id)).length}
-              </span>
-            </div>
+            {/* A boned section is still a section: it holds its dot and its
+                space, so the card's shape is right from the first frame. The
+                label and the count arrive with the group's first real row —
+                naming a group before anything is in it gives the answer away. */}
+            {(() => {
+              const open = done || g.rows.some((f) => hasLanded(f.id));
+              return (
+                <div className="flex items-center gap-1.5 mb-1 px-1.5 h-4">
+                  <span className={cx(
+                    'size-2 rounded-full shrink-0 transition-colors duration-200',
+                    open ? MODE_DOT[g.mode] : 'bg-[var(--beige-400)]',
+                  )} />
+                  {open ? (
+                    <>
+                      <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]">
+                        {MODE_COPY[g.mode].label}
+                      </span>
+                      <span className="text-xs text-[var(--fg3)] tabular-nums">
+                        {done ? g.rows.length : g.rows.filter((f) => hasLanded(f.id)).length}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="ema-skeleton block h-2.5 w-16 rounded-xs" aria-hidden />
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="space-y-1">
               {g.rows.map((f) => (
@@ -533,18 +572,26 @@ export function SearchConversational() {
                   className={cx(
                     'flex items-center gap-2 px-1.5 py-1 rounded-sm transition-colors duration-150',
                     'hover:bg-[var(--beige-100)] focus-within:bg-[var(--beige-100)]',
-                    !hasLanded(f.id) && 'invisible',
                     /* backwards, never both: a filled animation keeps this row
                        a stacking context after it has landed, and the open mode
                        menu of a row above would paint underneath it. */
-                    !done && hasLanded(f.id) && 'animate-[emaReveal_280ms_var(--ease-out-quint)_backwards]',
+                    !done && 'animate-[emaReveal_280ms_var(--ease-out-quint)_backwards]',
                   )}
+                  style={!done ? { animationDelay: `${rank(f.id) * BONE_STAGGER}ms` } : undefined}
                 >
                   <span className="text-sm text-[var(--fg1)] truncate flex-1">
-                    <Written full={f.value} shown={written(f.id, f.value)} />
+                    {hasLanded(f.id) ? (
+                      <Written full={f.value} shown={written(f.id, f.value)} />
+                    ) : (
+                      <span
+                        className="ema-skeleton block h-3.5 rounded-xs my-[3px]"
+                        style={{ width: boneWidth(f.id) }}
+                        aria-hidden
+                      />
+                    )}
                     {/* No phrase behind it: Ema inferred this one, and says so
                         rather than implying a source that is not in the text. */}
-                    {!BRIEF_SOURCE[f.id] && (
+                    {!BRIEF_SOURCE[f.id] && hasLanded(f.id) && (
                       <span className={cx(
                         'ml-1.5 inline-flex items-baseline gap-1 text-xs text-[var(--fg3)]',
                         !(done || hasResolved(f.id)) && 'invisible',
@@ -643,13 +690,14 @@ export function SearchConversational() {
           <div
             key={c.id}
             ref={flipRow(c.id)}
-            className={cx(
-              !hasLanded(c.id) && 'invisible',
-              !done && hasLanded(c.id) && 'animate-[emaReveal_280ms_var(--ease-out-quint)_backwards]',
-            )}
+            className={cx(!done && 'animate-[emaReveal_280ms_var(--ease-out-quint)_backwards]')}
+            style={!done ? {
+              animationDelay: `${BONE_OFFSET + (rank(c.id) - filters.length) * BONE_STAGGER}ms`,
+            } : undefined}
           >
-            {/* The level scale, not the stepper: this act is about how much each
-                criterion matters relative to the others, not about ±1. */}
+            {!hasLanded(c.id) ? <BoneCriterion id={c.id} /> : (
+            /* The level scale, not the stepper: this act is about how much each
+               criterion matters relative to the others, not about ±1. */
             <ScorecardRow
               compact
               weightControl="scale"
@@ -671,6 +719,7 @@ export function SearchConversational() {
               ) : undefined}
               onChange={(next) => store.setCriteria(store.criteria.map((x) => (x.id === c.id ? next : x)))}
             />
+            )}
           </div>
         ))}
       </div>
@@ -721,34 +770,32 @@ export function SearchConversational() {
   );
 
   const reachAndBegin = (
+    /* Three blocks, all 44px, all centred on one line: the figure's
+       line-height, the two text lines stacked (24 + 20), and the lg button's
+       height. It was items-baseline, which pinned the 40px figure's baseline to
+       the 16px line's and left the whole group sitting low against it. */
     <div className="flex items-center gap-5 flex-wrap" data-usage="reach">
-      <div className="flex items-baseline gap-2.5">
+      <div className="flex items-center gap-2.5">
         <span className="text-[40px] leading-[44px] font-black text-[var(--brand-ink)] tabular-nums">
           {SEARCH.eligible.toLocaleString()}
         </span>
         <div className="min-w-0">
-          <div className="text-base font-bold text-[var(--fg1)]">profiles are eligible</div>
-          <div className="text-sm text-[var(--fg2)] tabular-nums">
+          <div className="text-base font-bold text-[var(--fg1)] leading-6">profiles are eligible</div>
+          <div className="text-sm text-[var(--fg2)] tabular-nums leading-5">
             of {SEARCH.profilesScanned.toLocaleString()} scanned · your filters cut{' '}
             {Math.round((1 - SEARCH.eligible / SEARCH.profilesScanned) * 100)}%
           </div>
         </div>
       </div>
-      <div className="ml-auto flex flex-col items-end gap-1.5">
-        <Button
-          size="lg"
-          disabled={!ready}
-          icon={<MagnifyingGlass size={16} weight="bold" />}
-          onClick={begin}
-        >
-          Begin search
-        </Button>
-        <span className="text-xs text-[var(--fg2)]">
-          {ready
-            ? 'Ranks all of them · about 2 minutes'
-            : `Answer ${BLOCKING.length - answered} more to begin`}
-        </span>
-      </div>
+      <Button
+        size="lg"
+        className="ml-auto"
+        disabled={!ready}
+        icon={<MagnifyingGlass size={16} weight="bold" />}
+        onClick={begin}
+      >
+        Begin search
+      </Button>
     </div>
   );
 
@@ -882,19 +929,49 @@ export function SearchConversational() {
   );
 }
 
+/**
+ * A criterion before Ema has worked it out.
+ *
+ * Built to the compact ScorecardRow's own geometry — same border, radius, fill
+ * and padding, and bones where its name, type chip and weight scale will be —
+ * because a skeleton whose height is a guess makes the column jump at the
+ * moment the content it was standing in for arrives.
+ */
+function BoneCriterion({ id }: { id: string }) {
+  return (
+    <div
+      className="rounded-lg border border-[var(--border-color)] bg-[var(--bg3)] px-2.5 py-2"
+      style={{ ['--bone' as string]: 'var(--beige-400)' }}
+      aria-hidden
+    >
+      <div className="ema-skeleton h-3.5 rounded-xs" style={{ width: boneWidth(id) }} />
+      <div className="flex items-center gap-3 mt-2.5">
+        <div className="ema-skeleton h-4 w-[68px] rounded-xs shrink-0" />
+        <div className="flex items-center gap-1">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div key={i} className="ema-skeleton h-4 w-[13px] rounded-xs" />
+          ))}
+        </div>
+        <div className="ema-skeleton h-3 w-10 rounded-xs ml-auto" />
+      </div>
+    </div>
+  );
+}
+
 function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
       aria-pressed={on}
       className={cx(
-        'h-7 px-2.5 rounded-pill border text-xs font-medium cursor-pointer transition-colors duration-150',
+        'inline-flex items-center gap-1.5 h-9 px-3.5 rounded-pill border text-sm font-medium',
+        'cursor-pointer transition-colors duration-150',
         on
           ? 'bg-[var(--brand-primary)] border-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:bg-[var(--brand-primary-accent)]'
-          : 'bg-white border-[var(--beige-500)] text-[var(--fg2)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-100)] active:bg-[var(--beige-200)]',
+          : 'bg-white border-[var(--border-color)] text-[var(--fg1)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-100)] active:bg-[var(--beige-200)]',
       )}
     >
-      {on && <Check size={10} weight="bold" className="inline mr-1" />}
+      {on && <Check size={12} weight="bold" className="shrink-0" />}
       {children}
     </button>
   );
@@ -917,24 +994,45 @@ function Lit({ text, phrase }: { text: string; phrase: string | null }) {
   );
 }
 
+/**
+ * Ema speaking.
+ *
+ * This was a chat bubble — a white box with a tail corner and a purple disc
+ * floating beside it. Two things were wrong with that. The tail is a messaging
+ * idiom in a product that is not a messenger, and it was the only tailed
+ * corner anywhere in the app; and the panel was plain white with a raw
+ * beige-400 edge, while this product already has a settled treatment for
+ * "Ema wrote this, you have not approved it" — the purple tint and purple
+ * border used on every draft in Messages and Outreach.
+ *
+ * So Ema sounds the same here as everywhere else: the label names the speaker,
+ * and the tint says whose words these are without a disc in the margin.
+ *
+ * `from` is kept because the signature is part of the screen's grammar, but
+ * only Ema has ever spoken on this screen.
+ */
 function Bubble({ from, children }: { from: 'ema' | 'you'; children: React.ReactNode }) {
   if (from === 'you') {
     return (
       <div className="flex justify-end animate-[emaRise_200ms_var(--ease-out-quint)_backwards]">
-        <div className="max-w-[80%] rounded-lg rounded-tr-sm bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] px-3 py-2 text-sm leading-[20px] whitespace-pre-line">
+        <div className="max-w-[80%] rounded-lg bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] px-3.5 py-2.5 text-sm leading-[20px] whitespace-pre-line">
           {children}
         </div>
       </div>
     );
   }
   return (
-    <div className="flex gap-2.5 animate-[emaRise_200ms_var(--ease-out-quint)_80ms_backwards]">
-      <span className="size-7 rounded-full bg-[var(--ai-magic)] text-white flex items-center justify-center shrink-0">
-        <Sparkle size={13} weight="fill" />
-      </span>
-      <div className="flex-1 min-w-0 rounded-lg rounded-tl-sm bg-white border border-[var(--beige-400)] px-3 py-2 text-sm text-[var(--fg1)] leading-[20px]">
-        {children}
+    <div className={cx(
+      'rounded-lg border border-[var(--ai-magic-border)] bg-[var(--ai-magic-bg-subtle)] px-3.5 py-3',
+      'animate-[emaRise_200ms_var(--ease-out-quint)_80ms_backwards]',
+    )}>
+      <div className="flex items-center gap-1.5 mb-1.5">
+        <Sparkle size={12} weight="fill" className="text-[var(--ai-magic-text)]" />
+        <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--ai-magic-text)]">
+          Ema
+        </span>
       </div>
+      <div className="text-sm text-[var(--fg1)] leading-[20px]">{children}</div>
     </div>
   );
 }
