@@ -261,7 +261,7 @@ export function NotificationAlert() {
     // wrapper's height would be a layout animation, which is the one thing
     // that cannot run on the compositor.
     <div className="shrink-0 overflow-hidden bg-[var(--warning-bg-subtle)] border-b border-[var(--warning-border)]">
-      <div className={cx('px-5 py-2.5', fresh && 'animate-[emaDrop_320ms_var(--ease-out-quint)_both]')}>
+      <div className={cx('px-5 py-2.5', fresh && 'animate-[emaDrop_320ms_var(--ease-out-quint)_backwards]')}>
         <div className="max-w-[1180px] mx-auto flex items-center gap-3 bg-white border border-[var(--warning-border)] rounded-lg shadow-[var(--shadow-sm)] pl-3 pr-2 py-2.5">
           <span className="w-1 self-stretch rounded-full bg-[var(--warning)] shrink-0" aria-hidden />
 

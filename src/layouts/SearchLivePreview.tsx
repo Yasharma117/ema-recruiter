@@ -149,7 +149,15 @@ export function SearchLivePreview() {
         <div className="flex-1 min-w-0 flex flex-col min-h-0" data-usage="preview">
           <div className="flex-1 min-h-0 flex flex-col p-5">
             <div className="flex items-baseline gap-2 mb-1">
-              <span className="text-2xl font-bold text-[var(--fg1)] tabular-nums">≈ {reach.toLocaleString()}</span>
+              {/* This layout's whole claim is that tuning a filter changes what
+                  you see. The count is the one part of that claim that used to
+                  change without saying so. */}
+              <span
+                key={reach}
+                className="text-2xl font-bold text-[var(--fg1)] tabular-nums animate-[emaIn_220ms_var(--ease-out-quint)_backwards]"
+              >
+                ≈ {reach.toLocaleString()}
+              </span>
               <span className="text-sm text-[var(--fg2)]">profiles match · previewing the top 8</span>
             </div>
 

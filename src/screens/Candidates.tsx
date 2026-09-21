@@ -111,6 +111,9 @@ export function CandidatesScreen() {
   // Previous ranking order, so a re-weight can show movement.
   const prevOrder = React.useRef<Map<string, number>>(new Map());
   const [deltas, setDeltas] = React.useState<Map<string, number>>(new Map());
+  // The deltas expire on a timer nobody started; letting them blink out reads as
+  // a rendering fault, so they fade for the last 200ms of their six seconds.
+  const [deltasLeaving, setDeltasLeaving] = React.useState(false);
 
   const counts = React.useMemo(() => {
     // A blanked search must read as empty everywhere, not just in the table.
@@ -152,8 +155,11 @@ export function CandidatesScreen() {
   const railShares = React.useMemo(() => weightShares(activeCriteria), [activeCriteria]);
 
   const commitCriteria = (next: Criterion[]) => {
-    // Capture movement before the list re-sorts.
-    prevOrder.current = new Map(ranked.map((r, i) => [r.candidate.id, i]));
+    // Movement is measured from the last committed ranking, not from what is on
+    // screen: the draft preview has already re-sorted the table by the time you
+    // press Apply, so reading the order off `ranked` compared the new ranking
+    // with itself and every delta came out zero.
+    prevOrder.current = new Map(rankAll(pool, criteria).map((r, i) => [r.candidate.id, i]));
     store.setCriteria(next);
     setDraftCriteria(null);
 
@@ -164,7 +170,9 @@ export function CandidatesScreen() {
       if (before !== undefined && before !== i) d.set(r.candidate.id, before - i);
     });
     setDeltas(d);
-    setTimeout(() => setDeltas(new Map()), 6000);
+    setDeltasLeaving(false);
+    setTimeout(() => setDeltasLeaving(true), 5800);
+    setTimeout(() => { setDeltas(new Map()); setDeltasLeaving(false); }, 6000);
 
     const changed = bandChangeCount(pool, criteria, next);
     toast(`Rankings updated · ${changed} candidate${changed === 1 ? '' : 's'} changed band`, {
@@ -200,6 +208,14 @@ export function CandidatesScreen() {
     () => candidates.filter((c) => shortlist.has(c.id)),
     [candidates, shortlist],
   );
+  /* The drawer arrived off the right edge and used to vanish where it stood.
+     It now leaves the way it came — faster than it entered, because the entrance
+     is the system presenting something and the exit is only the system agreeing
+     with you. It keeps the candidate it was showing while it goes. */
+  const drawer = useExit(!!openCandidate, 160);
+  const drawerCandidate = React.useRef(openCandidate);
+  if (openCandidate) drawerCandidate.current = openCandidate;
+
   const showOutreach = view !== 'passed' && shortlisted.length > 0 && selected.size === 0;
   /* The tray used to vanish mid-frame — the list snapped up under the cursor,
      and the handover to the bulk bar read as two unrelated things. Leaving is
@@ -360,6 +376,7 @@ export function CandidatesScreen() {
               criteria={activeCriteria}
               selected={selected}
               deltas={deltas}
+              deltasLeaving={deltasLeaving}
               outreachByCandidate={new Map(outreach.map((o) => [o.candidateId, o]))}
               shortlist={shortlist}
               allSelected={allSelected}
@@ -505,11 +522,14 @@ export function CandidatesScreen() {
         )}
       </div>
 
-      {openCandidate && (
+      {drawer.render && drawerCandidate.current && (
         <div className="fixed inset-0 z-40 pointer-events-none">
-          <div className="pointer-events-auto">
+          {/* While it leaves it stops taking clicks, so the row you meant to
+              open next is live the moment you press Escape. */}
+          <div className={cx(drawer.leaving ? 'pointer-events-none' : 'pointer-events-auto')}>
             <DrawerHost
-              candidate={openCandidate}
+              leaving={drawer.leaving}
+              candidate={drawerCandidate.current}
               criteria={activeCriteria}
               onClose={() => setOpen(null)}
               onPrev={openIndex > 0 ? () => setOpen(ranked[openIndex - 1].candidate.id) : undefined}
@@ -657,12 +677,29 @@ function ShortlistTray({
   );
 }
 
-function DrawerHost(props: React.ComponentProps<typeof CandidateDrawer>) {
+function DrawerHost({ leaving, ...props }: React.ComponentProps<typeof CandidateDrawer> & { leaving?: boolean }) {
   return (
     <>
-      <div onClick={props.onClose} className="fixed inset-0 bg-[rgba(35,33,25,0.32)] animate-[emaFade_150ms_var(--ease-out-quint)]" />
+      <div
+        onClick={props.onClose}
+        className={cx(
+          'fixed inset-0 bg-[rgba(35,33,25,0.32)] transition-opacity duration-150 ease-[var(--ease-out-quint)]',
+          leaving ? 'opacity-0' : 'animate-[emaFade_150ms_var(--ease-out-quint)]',
+        )}
+      />
       <aside
-        className="fixed right-0 top-0 bottom-0 bg-white border-l border-[var(--beige-400)] shadow-[var(--shadow-lg)] flex flex-col animate-[emaSlide_300ms_var(--ease-out-quint)]"
+        className={cx(
+          'fixed right-0 top-0 bottom-0 bg-white border-l border-[var(--beige-400)] shadow-[var(--shadow-lg)] flex flex-col',
+          'transition-[transform,opacity] duration-150 ease-[var(--ease-out-quint)]',
+          // A transition, not a keyframe, so an exit interrupted by the next
+          // candidate retargets from wherever it got to. `motion-safe` keeps the
+          // travel out of reduced motion, and the transform is spelled out
+          // because Tailwind v4's translate utilities compile to the `translate`
+          // property, which this transition does not name.
+          leaving
+            ? 'opacity-0 motion-safe:[transform:translateX(16px)]'
+            : 'animate-[emaSlide_300ms_var(--ease-out-quint)]',
+        )}
         style={{ width: 560 }}
         data-usage="evidence"
       >
@@ -675,7 +712,7 @@ function DrawerHost(props: React.ComponentProps<typeof CandidateDrawer>) {
 /* ------------------------------ the table -------------------------------- */
 
 function CandidateTable({
-  ranked, criteria, selected, deltas, shortlist, outreachByCandidate, allSelected,
+  ranked, criteria, selected, deltas, deltasLeaving, shortlist, outreachByCandidate, allSelected,
   onToggleAll, onToggle, onOpen, onShortlist, view, forced, railOpen, chipsActive, onClearChips, onWiden,
   query, setQuery,
   searchPhase, scanProgress,
@@ -834,9 +871,16 @@ function CandidateTable({
                         {candidate.name}
                       </button>
                       {delta !== undefined && (
+                        /* The one thing on this screen that is only true for a
+                           moment: it arrives with the re-sort it explains, and
+                           it leaves on its own rather than being cut. Backwards
+                           on the way in, forwards on the way out — never both. */
                         <span className={cx(
                           'text-[10px] font-bold tabular-nums shrink-0',
                           delta > 0 ? 'text-[var(--success-text)]' : 'text-[var(--fg3)]',
+                          deltasLeaving
+                            ? 'animate-[emaOut_180ms_var(--ease-out-quint)_forwards]'
+                            : 'animate-[emaIn_200ms_var(--ease-out-quint)_backwards]',
                         )}>
                           {delta > 0 ? `▲${delta}` : `▼${Math.abs(delta)}`}
                         </span>

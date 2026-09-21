@@ -184,13 +184,18 @@ export function OutreachScreen() {
       <div className="h-full flex flex-col">
         {/* Arrival — what just landed here and what it wants. */}
         {arrivals.length > 0 && (
-          <div className="shrink-0 px-5 pt-3">
-            <ArrivalBanner
-              arrivals={arrivals}
-              byId={byId}
-              onOpen={setSelectedId}
-              onDismiss={store.acknowledgeArrivals}
-            />
+          // The wrapper clips; the padded strip inside is what travels, so the
+          // banner reads as coming out of the chrome rather than blinking into
+          // existence above the table. Rare event, so it gets a real entrance.
+          <div className="shrink-0 overflow-hidden">
+            <div className="px-5 pt-3 animate-[emaDrop_280ms_var(--ease-out-quint)_backwards]">
+              <ArrivalBanner
+                arrivals={arrivals}
+                byId={byId}
+                onOpen={setSelectedId}
+                onDismiss={store.acknowledgeArrivals}
+              />
+            </div>
           </div>
         )}
 

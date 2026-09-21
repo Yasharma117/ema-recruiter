@@ -28,6 +28,19 @@ export function CandidateDrawer({
   const isShortlisted = shortlist.has(candidate.id);
   const inOutreach = store.outreach.some((x) => x.candidateId === candidate.id);
 
+  /* Correcting a cell happens at the bottom of the Scorecard tab; the number it
+     moves is the pill at the top of the drawer, 300px away and behind your
+     hand. Replaying its entrance is what connects the two.
+     Keyed on a counter, not on the value, so that J/K — which changes the score
+     dozens of times a session by changing the candidate — never triggers it. */
+  const [correction, setCorrection] = React.useState(0);
+  const lastScore = React.useRef<{ id: string; value: number } | null>(null);
+  React.useEffect(() => {
+    const prev = lastScore.current;
+    lastScore.current = { id: candidate.id, value: r.value };
+    if (prev && prev.id === candidate.id && prev.value !== r.value) setCorrection((n) => n + 1);
+  }, [candidate.id, r.value]);
+
   // J/K move between candidates without leaving the drawer.
   React.useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -95,7 +108,12 @@ export function CandidateDrawer({
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-medium text-[var(--fg1)] truncate">{candidate.name}</h2>
-              <ScorePill ranking={r} size="sm" />
+              <span key={correction} className={cx(
+                'inline-flex',
+                correction > 0 && 'animate-[emaPop_200ms_var(--ease-out-quint)_backwards]',
+              )}>
+                <ScorePill ranking={r} size="sm" />
+              </span>
             </div>
             <div className="text-sm text-[var(--fg2)] truncate">{candidate.title}</div>
             <div className="text-xs text-[var(--fg3)] mt-0.5">

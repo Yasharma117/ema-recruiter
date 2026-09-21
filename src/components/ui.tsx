@@ -267,6 +267,17 @@ export function LabelText({ children, className }: { children: React.ReactNode; 
 
 /* --------------------------------- Tooltip --------------------------------- */
 
+/**
+ * When the last tooltip closed. Module scope on purpose: it is one clock for
+ * the whole page, which is what makes a *group* of tooltips behave like a
+ * toolbar rather than like ten independent panels.
+ */
+let tipClosedAt = 0;
+/** Long enough that crossing a table of score pills shows nothing at all. */
+const TIP_DELAY = 300;
+/** ...and short enough that moving along a row of them stays one gesture. */
+const TIP_WARM = 300;
+
 export function Tooltip({
   content, children, side = 'top', className, width,
 }: {
@@ -274,16 +285,41 @@ export function Tooltip({
   side?: 'top' | 'bottom' | 'right'; className?: string; width?: number;
 }) {
   const [open, setOpen] = React.useState(false);
+  /** Opened while the group was still warm — no delay, and no animation. */
+  const [instant, setInstant] = React.useState(false);
+  const timer = React.useRef<ReturnType<typeof setTimeout>>();
+  React.useEffect(() => () => clearTimeout(timer.current), []);
+
   const pos = {
     top: 'bottom-full left-1/2 -translate-x-1/2 mb-2',
     bottom: 'top-full left-1/2 -translate-x-1/2 mt-2',
     right: 'left-full top-1/2 -translate-y-1/2 ml-2',
   }[side];
+  // Scales out of the trigger rather than out of its own middle: the panel
+  // came from the thing under the cursor.
+  const origin = { top: 'origin-bottom', bottom: 'origin-top', right: 'origin-left' }[side];
+
+  const show = () => {
+    const warm = Date.now() - tipClosedAt < TIP_WARM;
+    setInstant(warm);
+    if (warm) { setOpen(true); return; }
+    timer.current = setTimeout(() => setOpen(true), TIP_DELAY);
+  };
+  const hide = () => {
+    clearTimeout(timer.current);
+    // Only an actual open warms the group; a cursor that passed through
+    // without ever resolving should not buy the next one a free pass.
+    if (open) tipClosedAt = Date.now();
+    setOpen(false);
+  };
+
   return (
     <span
       className={cx('relative inline-flex', className)}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseEnter={show}
+      onMouseLeave={hide}
+      onFocusCapture={show}
+      onBlurCapture={hide}
     >
       {children}
       {open && (
@@ -292,7 +328,9 @@ export function Tooltip({
           className={cx(
             'absolute z-50 pointer-events-none bg-white text-[var(--fg1)] rounded-md',
             'border border-[var(--beige-400)] shadow-[var(--shadow-md)] px-3 py-2 text-xs font-normal text-left',
-            'animate-[emaIn_150ms_var(--ease-out-quint)]',
+            // The second tooltip in a group is not an entrance, it is the same
+            // panel following the cursor — animating it is what feels slow.
+            !instant && cx('animate-[emaPop_140ms_var(--ease-out-quint)_backwards]', origin),
             pos,
           )}
           style={{ width: width ?? 'max-content', maxWidth: width ?? 320 }}
@@ -346,7 +384,9 @@ export function InfoPopover({
           <span
             role="dialog"
             aria-label={title}
-            className="absolute left-0 top-full mt-2 z-50 block bg-white border border-[var(--beige-400)] rounded-lg shadow-[var(--shadow-lg)] p-3.5 animate-[emaIn_150ms_var(--ease-out-quint)]"
+            /* Hangs below the "i", so it grows out of it — the default centre
+               origin would have it expand from the middle of its own body. */
+            className="absolute left-0 top-full mt-2 z-50 block bg-white border border-[var(--beige-400)] rounded-lg shadow-[var(--shadow-lg)] p-3.5 origin-top-left animate-[emaPop_150ms_var(--ease-out-quint)_backwards]"
             style={{ width }}
           >
             <span className="flex items-start gap-2 mb-2">
@@ -385,7 +425,10 @@ export function Tabs<T extends string>({
             key={t.id}
             onClick={() => onChange(t.id)}
             className={cx(
-              'inline-flex items-center gap-1.5 h-7 px-3 rounded-xs text-xs font-medium cursor-pointer transition-all duration-150',
+              // Named properties, not `all`: this control is pressed all day and
+              // `all` quietly animates whatever a variant adds to it later.
+              'inline-flex items-center gap-1.5 h-7 px-3 rounded-xs text-xs font-medium cursor-pointer',
+              'transition-[background-color,border-color,box-shadow,color] duration-150 ease-[var(--ease-out-quint)]',
               value === t.id
                 ? 'bg-white text-[var(--fg1)] border border-[var(--beige-300)] shadow-[var(--shadow-xs)]'
                 : 'text-[var(--fg2)] border border-transparent hover:text-[var(--fg1)]',
@@ -595,7 +638,37 @@ export function EmptyState({
 
 export interface ToastMsg { id: number; text: string; action?: { label: string; onClick: () => void } }
 
+/** Exit is faster than entry: you are deciding when you dismiss, the toast is
+ *  only responding. Kept under the store's own removal so nothing overlaps. */
+const TOAST_LEAVE = 140;
+
 export function ToastStack({ toasts, onDismiss }: { toasts: ToastMsg[]; onDismiss: (id: number) => void }) {
+  /**
+   * A toast leaves two ways — the × here, and the store's 8s timer — and both
+   * of them delete the data. Without a beat of afterlife the element is simply
+   * gone between two frames, which is the one thing a receipt in the corner of
+   * the eye must not do: you cannot tell a toast that expired from one you
+   * never saw. So departures are mirrored here and rendered out.
+   */
+  const [exiting, setExiting] = React.useState<ToastMsg[]>([]);
+  const seen = React.useRef(toasts);
+  React.useEffect(() => {
+    const gone = seen.current.filter((t) => !toasts.some((x) => x.id === t.id));
+    seen.current = toasts;
+    if (!gone.length) return;
+    setExiting((e) => [...e, ...gone]);
+    // Deliberately uncancelled: a second departure during this one must not
+    // reset the first one's clock and strand it on screen.
+    setTimeout(
+      () => setExiting((e) => e.filter((x) => !gone.some((g) => g.id === x.id))),
+      TOAST_LEAVE,
+    );
+  }, [toasts]);
+
+  // Ids only ever increase, so this restores the original order — an exiting
+  // toast holds its slot instead of jumping to the end of the stack.
+  const rows = [...toasts, ...exiting].sort((a, b) => a.id - b.id);
+
   return (
     <div
       role="status"
@@ -603,10 +676,18 @@ export function ToastStack({ toasts, onDismiss }: { toasts: ToastMsg[]; onDismis
       aria-atomic="false"
       className="fixed bottom-5 left-1/2 -translate-x-1/2 z-[45] flex flex-col gap-2 items-center"
     >
-      {toasts.map((t) => (
+      {rows.map((t) => (
         <div
           key={t.id}
-          className="flex items-center gap-3 bg-[var(--beige-960)] text-white rounded-md pl-3.5 pr-2 h-10 shadow-[var(--shadow-lg)] text-sm animate-[emaRise_200ms_var(--ease-out-quint)]"
+          aria-hidden={exiting.some((x) => x.id === t.id) || undefined}
+          className={cx(
+            'flex items-center gap-3 bg-[var(--beige-960)] text-white rounded-md pl-3.5 pr-2 h-10 shadow-[var(--shadow-lg)] text-sm',
+            exiting.some((x) => x.id === t.id)
+              // Back down through the edge it rose from, so dismissing reads as
+              // the reverse of arriving rather than as a deletion.
+              ? 'pointer-events-none animate-[emaSink_140ms_var(--ease-out-quint)_forwards]'
+              : 'animate-[emaRise_200ms_var(--ease-out-quint)_backwards]',
+          )}
         >
           <span>{t.text}</span>
           {t.action && (

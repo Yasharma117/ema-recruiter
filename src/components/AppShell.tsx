@@ -42,7 +42,12 @@ function Sidebar({
   return (
     <aside
       aria-label="Primary"
-      className="relative shrink-0 h-full bg-[var(--beige-50)] border-r border-[var(--beige-300)] flex flex-col transition-[width] duration-200 ease-[var(--ease-out-quint)]"
+      /* The width snaps. Easing it animated layout — 200ms of the whole page
+         re-flowing beside a table, on the one control where an instant answer
+         is the better answer anyway: you pressed it, and the labels inside
+         appear and disappear outright regardless, so the eased width was
+         sliding a rail around content that had already finished changing. */
+      className="relative shrink-0 h-full bg-[var(--beige-50)] border-r border-[var(--beige-300)] flex flex-col"
       style={{ width: w }}
     >
       <div className={cx(
@@ -213,8 +218,8 @@ export function AppShell({
         />
       )}
       <div className={cx('contents', nav === 'hidden' && 'hidden', chrome === 'enter' && cx(
-        '[&>aside]:animate-[emaFade_200ms_var(--ease-out-quint)_both]',
-        '[&>aside>*]:animate-[emaSlideL_260ms_var(--ease-out-quint)_both]',
+        '[&>aside]:animate-[emaFade_200ms_var(--ease-out-quint)_backwards]',
+        '[&>aside>*]:animate-[emaSlideL_260ms_var(--ease-out-quint)_backwards]',
       ))}>
         <Sidebar
           collapsed={collapsed}
@@ -227,7 +232,7 @@ export function AppShell({
       <div className="flex-1 min-w-0 flex flex-col">
         <header className={cx(
           'h-14 shrink-0 flex items-center gap-3.5 px-5 bg-[var(--beige-50)] border-b border-[var(--beige-300)]',
-          chrome === 'enter' && 'animate-[emaIn_200ms_var(--ease-out-quint)_60ms_both]',
+          chrome === 'enter' && 'animate-[emaIn_200ms_var(--ease-out-quint)_60ms_backwards]',
         )}>
           {collapsed && <IconButton icon={<SidebarSimple size={16} />} onClick={() => setNav('full')} title="Expand sidebar" />}
           {nav === 'hidden' && <span className="w-7 shrink-0" aria-hidden />}

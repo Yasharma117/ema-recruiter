@@ -266,7 +266,15 @@ export function WeightScale({
         ))}
       </div>
       {share !== undefined && (
-        <span className="text-xs text-[var(--fg3)] tabular-nums whitespace-nowrap">
+        /* Keyed on the value, so a changed share re-mounts and cross-fades.
+           The point is the coupling: raising one criterion lowers the other
+           five, and until now the other five numbers changed in silence — the
+           one consequence of this control that nothing on screen admitted to.
+           Opacity only, and only when the number is genuinely different. */
+        <span
+          key={share}
+          className="text-xs text-[var(--fg3)] tabular-nums whitespace-nowrap animate-[emaFade_160ms_var(--ease-out-quint)_backwards]"
+        >
           {share}{shareShort ? '%' : '% of the score'}
         </span>
       )}
@@ -282,7 +290,7 @@ const STEPPER_OFF = 'opacity-40 cursor-not-allowed hover:border-[var(--beige-500
 
 /** One editable scorecard criterion: type toggle, weight control, remove. */
 export function ScorecardRow({
-  criterion, onChange, onRemove, compact, weightControl = 'stepper', share, pending, note,
+  criterion, onChange, onRemove, compact, weightControl = 'stepper', share, pending, note, nameNode,
 }: {
   criterion: Criterion;
   onChange: (next: Criterion) => void;
@@ -299,6 +307,8 @@ export function ScorecardRow({
   pending?: boolean;
   /** A qualifier on the name — where it came from, or that nothing did. */
   note?: React.ReactNode;
+  /** Renders in place of the plain name — for a name being written out. */
+  nameNode?: React.ReactNode;
 }) {
   const c = criterion;
 
@@ -355,20 +365,26 @@ export function ScorecardRow({
       {!compact && <DotsSixVertical size={15} className="text-[var(--beige-700)] shrink-0 mt-1 cursor-grab" />}
       <div className={cx('min-w-0', compact ? 'basis-full' : 'flex-1')}>
         <div className="text-sm font-medium text-[var(--fg1)] leading-[18px]">
-          {c.name}{note}
+          {nameNode ?? c.name}{note}
         </div>
         {!compact && <div className="text-xs text-[var(--fg3)] mt-0.5">Bar for a 5: {c.bar}</div>}
       </div>
-      {pending ? (
-        <span className="ema-skeleton shrink-0 h-[22px] w-[72px] rounded-xs" aria-hidden />
-      ) : (
+      {/* A placeholder measured by hand is a placeholder that is wrong: pending
+          rows came out 8px shorter than resolved ones and the column grew as
+          each verdict landed. The real control stays in the layout, hidden,
+          with the skeleton laid over it — identical geometry by construction. */}
+      <span className={cx('relative inline-flex shrink-0', pending && 'pointer-events-none')}>
+      {pending && <span className="ema-skeleton absolute inset-0 rounded-xs z-10" aria-hidden />}
       <button
+        tabIndex={pending ? -1 : undefined}
+        aria-hidden={pending || undefined}
         onClick={() => onChange({ ...c, type: c.type === 'required' ? 'preferred' : 'required' })}
         aria-label={`${c.name} is ${c.type}. Toggle required or preferred`}
         title="Toggle required / preferred"
         className={cx(
           'shrink-0 text-[10px] uppercase tracking-[1px] font-bold px-2 py-1 rounded-xs cursor-pointer transition-colors',
-          'animate-[emaPop_160ms_var(--ease-out-quint)_both]',
+          !pending && 'animate-[emaPop_160ms_var(--ease-out-quint)_backwards]',
+          pending && 'invisible',
           c.type === 'required'
             ? 'bg-[var(--success-bg)] border border-[var(--success-border)] text-[var(--success-text)] hover:bg-[var(--green-300)] active:bg-[var(--green-400)]'
             : 'bg-[var(--beige-200)] border border-[var(--beige-500)] text-[var(--fg2)] hover:bg-[var(--beige-300)] active:bg-[var(--beige-400)]',
@@ -376,21 +392,17 @@ export function ScorecardRow({
       >
         {c.type}
       </button>
-      )}
+      </span>
       {/* A level scale reads as "how much does this matter", which is the
           question; a stepper reads as a number to nudge. Layouts choose. */}
       {weightControl === 'scale' ? (
         <div className={cx('shrink-0', compact && 'ml-auto')}>
-          {pending ? (
-            <span className="flex items-center gap-2.5" aria-hidden>
-              <span className="ema-skeleton h-5 w-[81px] rounded-xs" />
-              <span className="ema-skeleton h-3 w-[86px] rounded-xs" />
-            </span>
-          ) : (
-            <span className="block animate-[emaPop_160ms_var(--ease-out-quint)_both]">
+          <span className={cx('relative block', pending && 'pointer-events-none')}>
+            {pending && <span className="ema-skeleton absolute inset-0 rounded-xs z-10" aria-hidden />}
+            <span className={cx('block', !pending && 'animate-[emaPop_160ms_var(--ease-out-quint)_backwards]')}>
               <WeightScale name={c.name} value={c.weight} share={share} onChange={(n) => onChange({ ...c, weight: n })} />
             </span>
-          )}
+          </span>
         </div>
       ) : (
       <div className={cx('flex items-center gap-1 shrink-0', compact && 'ml-auto')}>
@@ -453,7 +465,13 @@ export function AddFilter({
   }
 
   return (
-    <div className={cx('p-2.5 rounded-lg border border-[var(--focus-border)] bg-white flex items-center gap-2 flex-wrap', className)}>
+    <div className={cx(
+      'p-2.5 rounded-lg border border-[var(--focus-border)] bg-white flex items-center gap-2 flex-wrap',
+      // Replaces a 28px ghost button with a full-width bordered row. Snapping
+      // it in shifts everything below by 40px with no account of why.
+      'animate-[emaIn_180ms_var(--ease-out-quint)_backwards]',
+      className,
+    )}>
       <select
         value={draft.category}
         onChange={(e) => setDraft({ ...draft, category: e.target.value })}
@@ -516,7 +534,13 @@ export function AddCriterion({
 
   return (
     <form
-      className={cx('rounded-lg border border-[var(--focus-border)] bg-white shadow-[var(--shadow-sm)]', className)}
+      className={cx(
+        'rounded-lg border border-[var(--focus-border)] bg-white shadow-[var(--shadow-sm)]',
+        // Four fields where a button was: far more travel than AddFilter's row,
+        // and once per search, so it gets the entrance rather than the snap.
+        'animate-[emaRise_220ms_var(--ease-out-quint)_backwards]',
+        className,
+      )}
       onSubmit={(e) => { e.preventDefault(); commit(); }}
       onKeyDown={(e) => { if (e.key === 'Escape') setDraft(null); }}
     >

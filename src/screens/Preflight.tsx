@@ -169,7 +169,14 @@ export function PreflightSheet({
           Review drafts first ({eligible.length})
         </Button>
         <Button size="sm" disabled={todayCount === 0} onClick={() => onConfirm(eligible.map((c) => c.id))}>
-          Start outreach for {todayCount} today
+          {/* Resolving a blocker changes nothing on the blocker itself — the
+              only place the decision lands is this number, at the far corner
+              from the radio you just pressed. Re-keyed so it replays. */}
+          Start outreach for{' '}
+          <span key={todayCount} className="inline-block tabular-nums animate-[emaPop_200ms_var(--ease-out-quint)_backwards]">
+            {todayCount}
+          </span>
+          {' '}today
         </Button>
       </div>
     </Modal>

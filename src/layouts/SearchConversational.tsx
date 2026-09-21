@@ -1,12 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Sparkle, Check, MagnifyingGlass, PaperPlaneTilt, CaretDown, ArrowCounterClockwise, Plus,
+  Sparkle, Check, MagnifyingGlass, PaperPlaneTilt, CaretDown, ArrowCounterClockwise, PencilSimple, X,
 } from '@phosphor-icons/react';
 import {
   SEARCH, FILTERS, FILTER_CATEGORIES, BRIEF_SOURCE, type FilterChip, type FilterMode,
 } from '../data/search';
-import { Button, Card, Textarea, ToastStack, cx } from '../components/ui';
+import { Button, Card, IconButton, Textarea, ToastStack, cx } from '../components/ui';
 import {
   ModePicker, ScorecardRow, ScorecardInfo, DerivedFrom, AddFilter, AddCriterion,
   SuggestedMark, MODE_DOT, MODE_COPY,
@@ -68,12 +68,68 @@ const BLOCKING: Step[] = [
    time: it is seen once per search, and it is the moment Ema shows its work.
    320ms of travel at 50ms apart reads as material settling; the 200ms version
    read as a page reloading. Still capped, so row 16 does not wait on 15 others. */
+/**
+ * Plays a re-order rather than cutting to it.
+ *
+ * Raising one criterion re-apportions every share, so the list can re-sort
+ * under your hand — and a list that simply appears in a new order leaves you
+ * working out what moved. First/Last/Invert/Play: measure where each row was,
+ * let React paint the new order, then put each row back where it came from and
+ * release it. Transform only, so it never touches layout.
+ */
+function useReorderFlip(active: boolean) {
+  const nodes = React.useRef(new Map<string, HTMLElement>());
+  const tops = React.useRef(new Map<string, number>());
+
+  React.useLayoutEffect(() => {
+    const now = new Map<string, number>();
+    nodes.current.forEach((el, id) => now.set(id, el.getBoundingClientRect().top));
+    if (active) {
+      now.forEach((top, id) => {
+        const was = tops.current.get(id);
+        const el = nodes.current.get(id);
+        if (was === undefined || !el) return;
+        const dy = was - top;
+        if (Math.abs(dy) < 1) return;
+        el.animate(
+          [{ transform: `translateY(${dy}px)` }, { transform: 'none' }],
+          { duration: 260, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' },
+        );
+      });
+    }
+    tops.current = now;
+  });
+
+  return (id: string) => (el: HTMLElement | null) => {
+    if (el) nodes.current.set(id, el);
+    else nodes.current.delete(id);
+  };
+}
+
+/**
+ * A name being written, at its finished size.
+ *
+ * Typing a string grows it a character at a time, and a growing string
+ * re-wraps — which changed the row's height mid-pass and made the whole column
+ * twitch. The part not yet written stays in the layout, unseen, so the line box
+ * is the same on the first frame as on the last.
+ */
+function Written({ full, shown }: { full: string; shown: string }) {
+  if (shown === full) return <>{full}</>;
+  return (
+    <>
+      {shown}
+      <span className="invisible">{full.slice(shown.length)}</span>
+    </>
+  );
+}
+
 const STAGGER = 50;
 const STAGGER_CAP = 8;
-const REVEAL = 'animate-[emaReveal_320ms_var(--ease-out-quint)_both]';
+const REVEAL = 'animate-[emaReveal_320ms_var(--ease-out-quint)_backwards]';
 /* Leaving an act: the same 4px of travel the entrance uses, upward, faster.
    Content lifts away instead of being deleted under the cursor. */
-const LEAVE = 'animate-[emaOut_120ms_var(--ease-out-quint)_both]';
+const LEAVE = 'animate-[emaOut_120ms_var(--ease-out-quint)_forwards]';
 
 /* One decision lands every STEP, and a row's verdict resolves one step after
    the row itself — so there is always exactly one item visibly being weighed.
@@ -110,6 +166,11 @@ export function SearchConversational() {
   const [stepsOpen, setStepsOpen] = React.useState(false);
   /** The brief has been handed over; the questions are on screen. */
   const [briefIn, setBriefIn] = React.useState(false);
+  /* Adding and removing are the same job — changing the list — so they live
+     behind one switch rather than an "add" button plus a row of little crosses
+     permanently on show. */
+  const [editFilters, setEditFilters] = React.useState(false);
+  const [editScore, setEditScore] = React.useState(false);
   const mode = useMode();
 
   /* Nobody asked for the theatre if they asked for less motion: there, every
@@ -156,12 +217,17 @@ export function SearchConversational() {
   ], [stage === 'configuring']);
 
   const [landed, setLanded] = React.useState(0);
+  // Reduced motion gets the new order without the journey.
   const total = decidingOrder.length;
   // Latched: anything added after the pass is decided the moment it exists.
   /* Only the configuring act performs the pass. Act 3 reviews a configuration
      that has already been decided — and the counter resets on leaving, so
      without this the cards would render empty there. */
   const done = still || stage !== 'configuring' || landed > total;
+  // Re-ordering only plays once the pass is over: while rows are still
+  // arriving, every landing shifts the ones below it and the flip would
+  // animate all of them at once — which is what made it feel jumpy.
+  const flipRow = useReorderFlip(!still && done);
 
   React.useEffect(() => {
     if (stage !== 'configuring') { setLanded(0); return; }
@@ -245,18 +311,18 @@ export function SearchConversational() {
           <Wash />
           <div className="relative z-10 min-h-full flex flex-col items-center justify-center px-6 py-10">
             <div className={cx('w-full max-w-[620px]', leaving && LEAVE)} data-usage="role">
-              <div className="flex items-center gap-2.5 mb-5 animate-[emaIn_200ms_var(--ease-out-quint)_both]">
+              <div className="flex items-center gap-2.5 mb-5 animate-[emaIn_200ms_var(--ease-out-quint)_backwards]">
                 <img src="/logo-mark.svg" alt="" height={22} style={{ height: 22 }} />
                 <span className="text-sm text-[var(--fg3)]">New search</span>
               </div>
 
-              <h1 className="text-[26px] leading-[32px] font-medium text-[var(--fg1)] animate-[emaRise_240ms_var(--ease-out-quint)_60ms_both]">
+              <h1 className="text-[26px] leading-[32px] font-medium text-[var(--fg1)] animate-[emaRise_240ms_var(--ease-out-quint)_60ms_backwards]">
                 What role are you hiring for?
               </h1>
               {/* The lede explains what Ema is about to do. Once it has done it
                   and is asking back, the explanation is in its own words. */}
               {!briefIn && (
-                <p className="text-sm text-[var(--fg2)] mt-2 leading-[20px] animate-[emaRise_240ms_var(--ease-out-quint)_120ms_both]">
+                <p className="text-sm text-[var(--fg2)] mt-2 leading-[20px] animate-[emaRise_240ms_var(--ease-out-quint)_120ms_backwards]">
                   Describe it however you like, or paste the job description. Ema only asks about
                   the things that decide who is eligible — everything else it infers, and you can
                   change all of it afterwards.
@@ -264,7 +330,7 @@ export function SearchConversational() {
               )}
 
               {/* Beat one: the box, and nothing else to answer yet. */}
-              <div className="mt-5 animate-[emaRise_240ms_var(--ease-out-quint)_180ms_both]">
+              <div className="mt-5 animate-[emaRise_240ms_var(--ease-out-quint)_180ms_backwards]">
                 {briefIn ? (
                   // Handed over. It stays readable, and stays editable — going
                   // back is a click, not a restart.
@@ -296,7 +362,7 @@ export function SearchConversational() {
               </div>
 
               {!briefIn ? (
-                <div className="mt-4 flex items-center gap-2.5 animate-[emaRise_240ms_var(--ease-out-quint)_240ms_both]">
+                <div className="mt-4 flex items-center gap-2.5 animate-[emaRise_240ms_var(--ease-out-quint)_240ms_backwards]">
                   <Button icon={<PaperPlaneTilt size={14} />} disabled={!draft.trim()} onClick={submitBrief}>
                     Send
                   </Button>
@@ -371,12 +437,15 @@ export function SearchConversational() {
   /* Grouped by what a filter does, not by where it came from. Render-time only:
      the source array's order drives the funnel maths in layouts A and C. */
   const decidedFilters = filters.filter((f) => hasLanded(f.id));
+  /* Grouped over the whole list, not the landed part: every row holds its place
+     from the first frame and simply becomes visible, so nothing below it moves
+     while the pass runs. */
   const grouped = MODE_ORDER
-    .map((m) => ({ mode: m, rows: decidedFilters.filter((f) => f.mode === m) }))
+    .map((m) => ({ mode: m, rows: filters.filter((f) => f.mode === m) }))
     .filter((g) => g.rows.length > 0);
 
   const filtersCard = (
-    <Card className={cx('p-3.5', !done && 'animate-[emaReveal_320ms_var(--ease-out-quint)_both]')} data-usage="filters">
+    <Card className={cx('p-3.5', !done && 'animate-[emaReveal_320ms_var(--ease-out-quint)_backwards]')} data-usage="filters">
       <div className="flex items-baseline gap-2 mb-1">
         <span className="text-sm font-medium text-[var(--fg1)]">Filters</span>
         <span className="text-xs text-[var(--fg3)] tabular-nums">
@@ -392,33 +461,45 @@ export function SearchConversational() {
       <div className="space-y-3">
         {grouped.map((g) => (
           <div key={g.mode}>
-            <div className="flex items-center gap-1.5 mb-1 px-1.5">
+            {/* Keeps its space but stays unseen until the group has something
+                in it — the count would otherwise give the answer away early. */}
+            <div className={cx(
+              'flex items-center gap-1.5 mb-1 px-1.5',
+              !done && !g.rows.some((f) => hasLanded(f.id)) && 'invisible',
+            )}>
               <span className={cx('size-2 rounded-full shrink-0', MODE_DOT[g.mode])} />
               <span className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)]">
                 {MODE_COPY[g.mode].label}
               </span>
-              <span className="text-xs text-[var(--fg3)] tabular-nums">{g.rows.length}</span>
+              <span className="text-xs text-[var(--fg3)] tabular-nums">
+                {done ? g.rows.length : g.rows.filter((f) => hasLanded(f.id)).length}
+              </span>
             </div>
 
             <div className="space-y-1">
               {g.rows.map((f) => (
                 <div
                   key={f.id}
+                  ref={flipRow(f.id)}
                   className={cx(
                     'flex items-center gap-2 px-1.5 py-1 rounded-sm transition-colors duration-150',
                     'hover:bg-[var(--beige-100)] focus-within:bg-[var(--beige-100)]',
+                    !hasLanded(f.id) && 'invisible',
                     /* backwards, never both: a filled animation keeps this row
                        a stacking context after it has landed, and the open mode
                        menu of a row above would paint underneath it. */
-                    !done && 'animate-[emaReveal_280ms_var(--ease-out-quint)_backwards]',
+                    !done && hasLanded(f.id) && 'animate-[emaReveal_280ms_var(--ease-out-quint)_backwards]',
                   )}
                 >
                   <span className="text-sm text-[var(--fg1)] truncate flex-1">
-                    {written(f.id, f.value)}
+                    <Written full={f.value} shown={written(f.id, f.value)} />
                     {/* No phrase behind it: Ema inferred this one, and says so
                         rather than implying a source that is not in the text. */}
-                    {(done || hasResolved(f.id)) && !BRIEF_SOURCE[f.id] && (
-                      <span className="ml-1.5 inline-flex items-baseline gap-1 text-xs text-[var(--fg3)]">
+                    {!BRIEF_SOURCE[f.id] && (
+                      <span className={cx(
+                        'ml-1.5 inline-flex items-baseline gap-1 text-xs text-[var(--fg3)]',
+                        !(done || hasResolved(f.id)) && 'invisible',
+                      )}>
                         <SuggestedMark />
                         inferred
                       </span>
@@ -426,6 +507,14 @@ export function SearchConversational() {
                   </span>
                   {/* Right-aligned like layout C: a 248px menu hung off a 92px
                       cell at the card's edge otherwise spills into open air. */}
+                  {editFilters && (
+                    <IconButton
+                      icon={<X size={12} />}
+                      className="size-6 shrink-0 order-last"
+                      onClick={() => setFilters((prev) => prev.filter((x) => x.id !== f.id))}
+                      title={`Remove ${f.value}`}
+                    />
+                  )}
                   <span className={cx(
                     'shrink-0 w-[92px] [&>span]:block [&>span>button]:w-full [&>span>button]:justify-between',
                     '[&_[role=menu]]:left-auto [&_[role=menu]]:right-0',
@@ -450,14 +539,27 @@ export function SearchConversational() {
       </div>
 
       {done && (
-        <AddFilter
-          className="mt-2"
-          categories={FILTER_CATEGORIES}
-          onAdd={(category, value) => {
-            setFilters((prev) => [...prev, { id: `f_custom_${Date.now()}`, category, value, mode: 'preferred' }]);
-            store.toast(`Added “${value}” to ${category.toLowerCase()}.`);
-          }}
-        />
+        <div className="mt-2">
+          {editFilters ? (
+            <div className="space-y-2">
+              <AddFilter
+                categories={FILTER_CATEGORIES}
+                onAdd={(category, value) => {
+                  setFilters((prev) => [...prev, { id: `f_custom_${Date.now()}`, category, value, mode: 'preferred' }]);
+                  store.toast(`Added “${value}” to ${category.toLowerCase()}.`);
+                }}
+              />
+              <Button size="sm" variant="ghost" color="altBrand" onClick={() => setEditFilters(false)}>
+                Done
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="ghost" color="altBrand" icon={<PencilSimple size={13} />}
+              onClick={() => setEditFilters(true)}>
+              Edit filters
+            </Button>
+          )}
+        </div>
       )}
     </Card>
   );
@@ -468,11 +570,13 @@ export function SearchConversational() {
   const rankedCriteria = [...store.criteria].sort((a, b) => (shares[b.id] ?? 0) - (shares[a.id] ?? 0));
   const decidedCriteria = rankedCriteria.filter((c) => hasLanded(c.id));
 
-  /* An empty card counting "0 of 6" while the filters finish is furniture for
-     work that has not started. The card arrives when Ema reaches it. */
-  const scorecardCard = !done && decidedCriteria.length === 0 ? null : (
+  /* Both cards stand from the first frame. Letting the scorecard arrive when
+     its first row landed meant the column jumped by its full height halfway
+     through the pass — the last piece of the jumpiness. It reads as a card
+     waiting its turn, which is what it is. */
+  const scorecardCard = (
     <Card
-      className={cx('p-3.5', !done && 'animate-[emaReveal_320ms_var(--ease-out-quint)_120ms_both]')}
+      className={cx('p-3.5', !done && 'animate-[emaReveal_320ms_var(--ease-out-quint)_120ms_backwards]')}
       data-usage="scorecard"
     >
       <div className="flex items-center gap-2 mb-1">
@@ -486,18 +590,32 @@ export function SearchConversational() {
       </div>
       <div className="mb-2.5"><DerivedFrom /></div>
       <div className="space-y-1.5">
-        {decidedCriteria.map((c) => (
-          <div key={c.id} className={cx(!done && 'animate-[emaReveal_280ms_var(--ease-out-quint)_both]')}>
+        {rankedCriteria.map((c) => (
+          <div
+            key={c.id}
+            ref={flipRow(c.id)}
+            className={cx(
+              !hasLanded(c.id) && 'invisible',
+              !done && hasLanded(c.id) && 'animate-[emaReveal_280ms_var(--ease-out-quint)_backwards]',
+            )}
+          >
             {/* The level scale, not the stepper: this act is about how much each
                 criterion matters relative to the others, not about ±1. */}
             <ScorecardRow
               compact
               weightControl="scale"
               pending={!hasResolved(c.id)}
+              onRemove={editScore
+                ? () => store.setCriteria(store.criteria.filter((x) => x.id !== c.id))
+                : undefined}
               share={shares[c.id]}
-              criterion={{ ...c, name: written(c.id, c.name) }}
-              note={(done || hasResolved(c.id)) && !BRIEF_SOURCE[c.id] ? (
-                <span className="ml-1.5 inline-flex items-baseline gap-1 text-xs font-normal text-[var(--fg3)]">
+              criterion={c}
+              nameNode={<Written full={c.name} shown={written(c.id, c.name)} />}
+              note={!BRIEF_SOURCE[c.id] ? (
+                <span className={cx(
+                  'ml-1.5 inline-flex items-baseline gap-1 text-xs font-normal text-[var(--fg3)]',
+                  !(done || hasResolved(c.id)) && 'invisible',
+                )}>
                   <SuggestedMark />
                   inferred
                 </span>
@@ -508,14 +626,27 @@ export function SearchConversational() {
         ))}
       </div>
       {done && (
-        <AddCriterion
-          className="mt-2"
-          criteria={store.criteria}
-          onAdd={(c) => {
-            store.setCriteria([...store.criteria, { ...c, id: `c_custom_${Date.now()}` }]);
-            store.toast(`Added “${c.name}” to the scorecard.`);
-          }}
-        />
+        <div className="mt-2">
+          {editScore ? (
+            <div className="space-y-2">
+              <AddCriterion
+                criteria={store.criteria}
+                onAdd={(c) => {
+                  store.setCriteria([...store.criteria, { ...c, id: `c_custom_${Date.now()}` }]);
+                  store.toast(`Added “${c.name}” to the scorecard.`);
+                }}
+              />
+              <Button size="sm" variant="ghost" color="altBrand" onClick={() => setEditScore(false)}>
+                Done
+              </Button>
+            </div>
+          ) : (
+            <Button size="sm" variant="ghost" color="altBrand" icon={<PencilSimple size={13} />}
+              onClick={() => setEditScore(true)}>
+              Edit scorecard
+            </Button>
+          )}
+        </div>
       )}
     </Card>
   );
@@ -553,7 +684,7 @@ export function SearchConversational() {
       <AppShell chrome="hidden">
         <div className={cx(
           'h-full overflow-y-auto bg-[var(--app-background)]',
-          leaving ? LEAVE : 'animate-[emaFade_200ms_var(--ease-out-quint)_both]',
+          leaving ? LEAVE : 'animate-[emaFade_200ms_var(--ease-out-quint)_backwards]',
         )}>
           <div className="p-5 space-y-3">
             {/* Full width, so its right edge lines up with the cards below;
@@ -605,7 +736,7 @@ export function SearchConversational() {
           {/* The thread folds to a line, but the reasoning stays reachable:
               "where did these filters come from" is the first question anyone
               asks of a configuration they did not type. */}
-          <Card className="overflow-hidden animate-[emaRise_240ms_var(--ease-out-quint)_both]" data-usage="role">
+          <Card className="overflow-hidden animate-[emaRise_240ms_var(--ease-out-quint)_backwards]" data-usage="role">
             <div className="flex items-center gap-1 pr-2.5">
               <button
                 onClick={() => setStepsOpen((o) => !o)}
@@ -653,11 +784,11 @@ export function SearchConversational() {
             )}
           </Card>
 
-          <Card className="p-3.5 animate-[emaRise_240ms_var(--ease-out-quint)_60ms_both]">{reachAndBegin}</Card>
+          <Card className="p-3.5 animate-[emaRise_240ms_var(--ease-out-quint)_60ms_backwards]">{reachAndBegin}</Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 items-start">
-            <div className="animate-[emaRise_240ms_var(--ease-out-quint)_100ms_both]">{filtersCard}</div>
-            <div className="animate-[emaRise_240ms_var(--ease-out-quint)_140ms_both]">{scorecardCard}</div>
+            <div className="animate-[emaRise_240ms_var(--ease-out-quint)_100ms_backwards]">{filtersCard}</div>
+            <div className="animate-[emaRise_240ms_var(--ease-out-quint)_140ms_backwards]">{scorecardCard}</div>
           </div>
         </div>
       </div>
@@ -706,7 +837,7 @@ function Lit({ text, phrase }: { text: string; phrase: string | null }) {
 function Bubble({ from, children }: { from: 'ema' | 'you'; children: React.ReactNode }) {
   if (from === 'you') {
     return (
-      <div className="flex justify-end animate-[emaRise_200ms_var(--ease-out-quint)_both]">
+      <div className="flex justify-end animate-[emaRise_200ms_var(--ease-out-quint)_backwards]">
         <div className="max-w-[80%] rounded-lg rounded-tr-sm bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] px-3 py-2 text-sm leading-[20px] whitespace-pre-line">
           {children}
         </div>
@@ -714,7 +845,7 @@ function Bubble({ from, children }: { from: 'ema' | 'you'; children: React.React
     );
   }
   return (
-    <div className="flex gap-2.5 animate-[emaRise_200ms_var(--ease-out-quint)_80ms_both]">
+    <div className="flex gap-2.5 animate-[emaRise_200ms_var(--ease-out-quint)_80ms_backwards]">
       <span className="size-7 rounded-full bg-[var(--ai-magic)] text-white flex items-center justify-center shrink-0">
         <Sparkle size={13} weight="fill" />
       </span>

@@ -179,6 +179,10 @@
 
 /* The counterpart to emaRise: content leaves the way it arrived, upward. */
 @keyframes emaOut  { to { opacity: 0; transform: translateY(-4px) } }
+/* The same idea for something anchored to the bottom of the window: a toast
+   rose from below the edge, so it leaves back through it. emaOut travels up,
+   which is right for content in the page and wrong for the toast stack. */
+@keyframes emaSink { to { opacity: 0; transform: translateY(8px) } }
 @keyframes emaShimmer { from { transform: translateX(-100%) } to { transform: translateX(100%) } }
 
 /* The alert bar arriving from behind the header. Travels its own full height
@@ -186,7 +190,7 @@
    than fading in on top of the page. Plays once, then holds still. */
 @keyframes emaDrop { from { opacity: 0; transform: translateY(-100%) } to { opacity: 1; transform: none } }
 
-.ema-row-enter { animation: emaIn 250ms var(--ease-out-quint) both; }
+.ema-row-enter { animation: emaIn 250ms var(--ease-out-quint) backwards; }
 
 /* Skeleton shimmer, left to right, beige-400 -> beige-50 */
 .ema-skeleton { position: relative; overflow: hidden; background: var(--beige-200); }
@@ -259,6 +263,7 @@
   @keyframes washSweep{ from { opacity: 0 } to { opacity: 1 } }
   @keyframes emaSlideL{ from { opacity: 0 } to { opacity: 1 } }
   @keyframes emaOut   { to   { opacity: 0 } }
+  @keyframes emaSink  { to   { opacity: 0 } }
   @keyframes emaDrop  { from { opacity: 0 } to { opacity: 1 } }
   *, *::before, *::after {
     /* No cascade — a stagger is decoration, and it is the decoration that moves. */
@@ -301,7 +306,12 @@
   background: color-mix(in srgb, var(--ai-magic) 26%, transparent);
   color: inherit;
   border-radius: 3px;
+  /* The padding is paid back in margin. Without this the lit phrase is 4px
+     wider than the words it replaces, the paragraph re-wraps, and every line
+     below it jumps a row each time the highlight moves — which read as the
+     whole panel twitching while Ema worked. */
   padding: 1px 2px;
+  margin: 0 -2px;
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--ai-magic) 34%, transparent);
   animation: emaFade 140ms var(--ease-out-quint) both;
 }

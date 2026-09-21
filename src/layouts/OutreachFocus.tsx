@@ -106,6 +106,13 @@ export function OutreachFocusBoard() {
   /** Candidate ids ticked on the board. Selection is not a stage change. */
   const [selected, setSelected] = React.useState<Set<string>>(new Set());
   const [detailFor, setDetailFor] = React.useState<string | null>(null);
+  /**
+   * Bumped only when the queue is moved *discontinuously* — a chip, a
+   * notification, entering or leaving a review. Keying the card on it replays
+   * the card's own entrance for exactly those moves, and never for j/k/Enter,
+   * which walk the queue and have to stay instant.
+   */
+  const [jump, setJump] = React.useState(0);
 
   const byId = React.useMemo(() => new Map(candidates.map((c) => [c.id, c])), [candidates]);
   const senderById = React.useMemo(() => new Map(senders.map((s) => [s.id, s])), [senders]);
@@ -157,6 +164,7 @@ export function OutreachFocusBoard() {
     setReviewIds(null);
     const i = allQueue.findIndex((r) => r.candidateId === candidateId);
     if (i < 0) return;
+    if (allQueue[i].candidateId !== record?.candidateId) setJump((n) => n + 1);
     setDetailFor(null);
     setColFilter(null);
     setManualBoard(false);
@@ -228,13 +236,14 @@ export function OutreachFocusBoard() {
       setColFilter(null);
       setManualBoard(false);
       setCursor(0);
+      setJump((n) => n + 1);
       return;
     }
     // One call, so the batch gets one toast and one undo that covers all of it.
     store.actMany(ids, id);
   };
 
-  const endReview = () => { setReviewIds(null); setLeftOut([]); setCursor(0); };
+  const endReview = () => { setReviewIds(null); setLeftOut([]); setCursor(0); setJump((n) => n + 1); };
 
   // The walk ends when the last one stops needing you — not when it is "sent",
   // since skipping and classifying clear a record just as legitimately.
@@ -529,7 +538,10 @@ export function OutreachFocusBoard() {
                 </span>
                 <div className="flex-1 h-1.5 rounded-full bg-[var(--beige-300)] overflow-hidden">
                   <div
-                    className="h-full rounded-full bg-[var(--brand-primary)] transition-[width] duration-300 ease-[var(--ease-out-quint)]"
+                    /* No transition: this bar is driven by j/k/Enter, and a
+                       width animation is both a layout property and a 300ms
+                       lag on the fastest loop on the screen. */
+                    className="h-full rounded-full bg-[var(--brand-primary)]"
                     style={{ width: `${queue.length ? (cursor / queue.length) * 100 : 100}%` }}
                   />
                 </div>
@@ -586,7 +598,7 @@ export function OutreachFocusBoard() {
               </div>
             ) : (
               <div className="w-full max-w-[760px] px-6 pb-10" data-usage="next-action">
-                <div className="rounded-xl border border-[var(--beige-400)] bg-white shadow-[var(--shadow-sm)] p-5 animate-[emaIn_200ms_var(--ease-out-quint)]">
+                <div key={jump} className="rounded-xl border border-[var(--beige-400)] bg-white shadow-[var(--shadow-sm)] p-5 animate-[emaIn_200ms_var(--ease-out-quint)]">
                   <div className="flex items-center gap-3 mb-3">
                     <Avatar name={candidate.name} size={36} tone={candidate.avatarTone} />
                     <div className="flex-1 min-w-0">

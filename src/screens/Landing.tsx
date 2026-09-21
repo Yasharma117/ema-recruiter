@@ -24,11 +24,11 @@ export function Landing() {
       <div className="h-full overflow-y-auto bg-[var(--app-background)]">
         <div className="min-h-full flex flex-col items-center justify-center px-6 py-10">
           <div className="w-full max-w-[560px]">
-            <h1 className="text-[26px] leading-[32px] font-medium text-[var(--fg1)] animate-[emaRise_240ms_var(--ease-out-quint)_both]">
+            <h1 className="text-[26px] leading-[32px] font-medium text-[var(--fg1)] animate-[emaRise_240ms_var(--ease-out-quint)_backwards]">
               Yash's Ema assignment
             </h1>
 
-            <div className="mt-6 flex items-start gap-3 flex-wrap animate-[emaRise_240ms_var(--ease-out-quint)_60ms_both]">
+            <div className="mt-6 flex items-start gap-3 flex-wrap animate-[emaRise_240ms_var(--ease-out-quint)_60ms_backwards]">
               <div className="flex flex-col gap-2">
                 <Button
                   size="lg"
@@ -55,7 +55,7 @@ export function Landing() {
               </div>
             </div>
 
-            <div className="mt-10 pt-4 border-t border-[var(--beige-300)] text-xs text-[var(--fg3)] animate-[emaRise_240ms_var(--ease-out-quint)_120ms_both]">
+            <div className="mt-10 pt-4 border-t border-[var(--beige-300)] text-xs text-[var(--fg3)] animate-[emaRise_240ms_var(--ease-out-quint)_120ms_backwards]">
               <NavLink to="/docs/NOTES.md" className="font-medium text-[var(--fg2)] hover:text-[var(--fg1)] hover:underline">
                 NOTES.md
               </NavLink>

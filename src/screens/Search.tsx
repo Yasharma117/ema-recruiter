@@ -288,7 +288,16 @@ export function SearchScreen() {
               <Card className="p-4" data-usage="reach">
                 <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] mb-2">Estimated reach</div>
                 <div className="flex items-baseline gap-1.5">
-                  <span className="text-2xl font-bold text-[var(--fg1)] tabular-nums">≈ {reach.toLocaleString()}</span>
+                  {/* Keyed on the number: moving one filter to must-have redraws
+                      this and the funnel under it, and the number is the whole
+                      reason the rail is there. A silent swap in a sticky rail
+                      you were not looking at is a change nobody sees happen. */}
+                  <span
+                    key={reach}
+                    className="text-2xl font-bold text-[var(--fg1)] tabular-nums animate-[emaIn_220ms_var(--ease-out-quint)_backwards]"
+                  >
+                    ≈ {reach.toLocaleString()}
+                  </span>
                   <span className="text-sm text-[var(--fg2)]">public profiles</span>
                 </div>
                 <div className="text-sm text-[var(--fg2)] mt-0.5">
