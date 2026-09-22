@@ -273,9 +273,14 @@ function TemplateCard({
             {body}
           </div>
           <div className="flex items-center gap-2 mt-2.5 flex-wrap">
+            {/* "Edit for everyone" named the blast radius, and named it wrong:
+                it reads as reaching every copy including the ones already sent.
+                Naming the object instead — the template — says the same thing
+                without the alarm, and the counterpart on a single candidate is
+                already "Applies to this candidate only". */}
             <Button size="xs" variant="secondary" color="altBrand" icon={<PencilSimple size={11} />}
               onClick={() => setEditing(true)}>
-              Edit for everyone
+              Edit template
             </Button>
             {overridden > 0 && (
               <span className="inline-flex items-center gap-1 text-xs text-[var(--warning-text)]">

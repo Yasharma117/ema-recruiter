@@ -16,6 +16,7 @@ import { weightShares } from '../lib/scoring';
 import { useStore } from '../store';
 import { UsageOverlay, useMode } from './LayoutPicker';
 import { Wash } from '../components/Wash';
+import { clearSearchConfig, getSearchConfig, setSearchConfig } from '../lib/searchConfig';
 
 /**
  * Search · B — Conversational setup.
@@ -185,14 +186,14 @@ export function SearchConversational() {
   const store = useStore();
   const { toasts, dismissToast } = store;
 
-  const [brief, setBrief] = React.useState(SEARCH.brief);
-  const [sent, setSent] = React.useState(false);
+  const [brief, setBrief] = React.useState(getSearchConfig()?.brief ?? SEARCH.brief);
+  const [sent, setSent] = React.useState(getSearchConfig() !== null);
   /* Prefilled: the fastest way to show what a brief looks like is to put one
      there. It is a textarea, so disagreeing with it costs one select-all. */
-  const [draft, setDraft] = React.useState(SEARCH.brief);
-  const [answers, setAnswers] = React.useState<Record<string, string>>({});
+  const [draft, setDraft] = React.useState(getSearchConfig()?.draft ?? SEARCH.brief);
+  const [answers, setAnswers] = React.useState<Record<string, string>>(getSearchConfig()?.answers ?? {});
 
-  const [filters, setFilters] = React.useState<FilterChip[]>(FILTERS);
+  const [filters, setFilters] = React.useState<FilterChip[]>(getSearchConfig()?.filters ?? FILTERS);
   const [stepsOpen, setStepsOpen] = React.useState(false);
   /** The brief has been handed over; the questions are on screen. */
   const [briefIn, setBriefIn] = React.useState(false);
@@ -242,6 +243,13 @@ export function SearchConversational() {
   const [building, setBuilding] = React.useState(false);
 
   const stage: 'cold' | 'configuring' | 'ready' = !sent ? 'cold' : building ? 'configuring' : 'ready';
+
+  /* Act 3 is a review, so edits made there have to reach the cache too —
+     otherwise leaving and returning would restore the configuration as first
+     built and quietly discard every change made to it since. */
+  React.useEffect(() => {
+    if (sent) setSearchConfig({ brief, draft, answers, filters });
+  }, [sent, brief, draft, answers, filters]);
   /* The configuration is new information exactly once — in act 2, while Ema is
      building it. In act 3 it is the same 16 rows in a new place, so they ride
      in with their card instead of re-cascading in front of someone who has
@@ -363,6 +371,9 @@ export function SearchConversational() {
   const send = () => {
     if (!draft.trim() || unanswered.length || leaving) return;
     setBrief(draft.trim());
+    // From here the search is configured, and stays configured across a trip
+    // to Candidates and back.
+    setSearchConfig({ brief: draft.trim(), draft, answers, filters });
     setLeaving(true);
     /* Reduced motion has no pass to watch, so it never enters act 2. */
     setTimeout(() => { setSent(true); setBuilding(!still); setLeaving(false); }, 120);
@@ -817,7 +828,7 @@ export function SearchConversational() {
             : `Weighing · ${decidedCriteria.length} of ${store.criteria.length}`}
         </span>
       </div>
-      <div className="mb-2.5"><DerivedFrom /></div>
+      
       <div className="space-y-1.5">
         {rankedCriteria.map((c) => (
           <div
@@ -1020,7 +1031,10 @@ export function SearchConversational() {
                 /* The answers survive: they were true of this search a minute
                    ago, they are chips you can change in place, and clearing
                    them would disable Send on a screen you just came back to. */
-                onClick={() => { setDraft(brief); setSent(false); setStepsOpen(false); }}
+                onClick={() => {
+                  clearSearchConfig();
+                  setDraft(brief); setSent(false); setBriefIn(false); setStepsOpen(false);
+                }}
               >
                 Start again
               </Button>

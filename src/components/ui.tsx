@@ -435,7 +435,8 @@ export function Tabs<T extends string>({
   value, onChange, items, variant = 'underline', className,
 }: {
   value: T; onChange: (v: T) => void;
-  items: { id: T; label: string; count?: number; icon?: React.ReactNode }[];
+  /** `accent`: this tab's count is a running total worth seeing, not a size. */
+  items: { id: T; label: string; count?: number; icon?: React.ReactNode; accent?: boolean }[];
   variant?: 'underline' | 'segmented'; className?: string;
 }) {
   if (variant === 'segmented') {
@@ -457,7 +458,15 @@ export function Tabs<T extends string>({
           >
             {t.icon}{t.label}
             {t.count !== undefined && (
-              <span className={cx('tabular-nums', value === t.id ? 'text-[var(--fg2)]' : 'text-[var(--fg3)]')}>
+              <span className={cx(
+                'tabular-nums',
+                // An accented count is a tally you are building, so it is a
+                // filled pill rather than a grey number the same weight as the
+                // sizes beside it.
+                t.accent && t.count > 0
+                  ? 'inline-flex items-center justify-center min-w-4 h-4 px-1 rounded-pill bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] font-bold'
+                  : value === t.id ? 'text-[var(--fg2)]' : 'text-[var(--fg3)]',
+              )}>
                 {t.count}
               </span>
             )}

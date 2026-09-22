@@ -164,7 +164,14 @@ function Sidebar({
                         'absolute -top-1 -right-1 size-2.5 rounded-full ring-2',
                         dotOnly(to)
                           ? dotTone(isActive)
-                          : cx('bg-[var(--rail-fg)]', isActive ? 'ring-[var(--rail-sel-bg)]' : 'ring-[var(--rail-base)]'),
+                          // Only the ring followed the selection; the fill was
+                          // pinned to --rail-fg, so on the white pill the dot
+                          // stayed the grey it is against the dark rail while
+                          // the icon under it and the expanded count pill both
+                          // went green.
+                          : isActive
+                            ? 'bg-[var(--rail-sel-fg)] ring-[var(--rail-sel-bg)]'
+                            : 'bg-[var(--rail-fg)] ring-[var(--rail-base)]',
                         to === '/outreach' && urgent && 'animate-[emaPop_200ms_var(--ease-out-quint)]',
                       )}
                     />

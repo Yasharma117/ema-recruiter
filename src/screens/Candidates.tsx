@@ -19,6 +19,7 @@ import { CandidateDrawer } from './CandidateDrawer';
 import { CompareModal } from './Compare';
 import { PreflightSheet } from './Preflight';
 import { CompanyLogo } from '../components/CompanyLogo';
+import { Wash } from '../components/Wash';
 import { useStore } from '../store';
 import { CandidateSearch, NoQueryMatch, type ListFilter } from '../components/CandidateSearch';
 import { WeightScale } from '../components/SearchControls';
@@ -229,7 +230,6 @@ export function CandidatesScreen() {
   if (shortlisted.length) trayPeople.current = shortlisted;
   // Only overlay while the bulk bar is claiming the same slot; leaving because
   // the shortlist emptied should hold its place so the list settles after it.
-  const trayOverlays = tray.leaving && selected.size > 0;
 
   const headerActions = (
     <Button size="sm" variant="secondary" color="altBrand" icon={<PencilSimple size={14} />} onClick={() => navigate('/search')}>
@@ -241,14 +241,17 @@ export function CandidatesScreen() {
     <AppShell screen="candidates" breadcrumbs={['Searches', SEARCH.name]} actions={headerActions}>
       <div className="h-full flex flex-col bg-[var(--app-background)]">
         {/* Counts + view switch */}
-        <div className="shrink-0 px-5 pt-3.5 pb-2 flex items-center gap-4 flex-wrap bg-[var(--app-chrome)]">
+        <div className="shrink-0 px-5 pt-5 pb-3 flex items-center gap-4 flex-wrap bg-[var(--app-chrome)]">
           <Tabs
             variant="segmented"
             value={view}
             onChange={(v) => { setView(v); setSelected(new Set()); }}
             items={[
               { id: 'all', label: 'All', count: counts.all },
-              { id: 'shortlist', label: 'Shortlist', count: counts.shortlist },
+              // The shortlist is the thing being built on this screen; its
+              // total was a grey number between two other grey numbers, and
+              // the only prominent statement of it was a footer tray.
+              { id: 'shortlist', label: 'Shortlist', count: counts.shortlist, accent: true },
               { id: 'passed', label: 'Passed', count: counts.passed },
             ]}
           />
@@ -279,7 +282,7 @@ export function CandidatesScreen() {
         </div>
 
         {/* Source tabs + filter chips */}
-        <div className="shrink-0 px-5 flex items-center gap-3 flex-wrap bg-[var(--app-chrome)] border-b border-[var(--beige-400)]">
+        <div className="shrink-0 px-5 pt-1 flex items-center gap-3 flex-wrap bg-[var(--app-chrome)] border-b border-[var(--beige-400)]">
           <Tabs
             value={sourceTab}
             onChange={setSourceTab}
@@ -340,6 +343,23 @@ export function CandidatesScreen() {
         {/* Main + rail */}
         <div className="flex-1 min-h-0 flex">
           <div className="relative flex-1 min-w-0 flex flex-col">
+          {/* At the head of the list, not the foot.
+              The foot of this column is where the bulk bar appears the moment
+              you tick a row, so the bottom edge meant two different things
+              depending on state, and the standing one — the shortlist you are
+              building — was the one you never saw. Transient selection stays
+              at the bottom; the thing that persists sits above the rows, in
+              the path you read down. */}
+          {tray.render && (
+            <ShortlistTray
+              people={shortlisted.length ? shortlisted : trayPeople.current}
+              leaving={tray.leaving}
+              // Committing hands the decision to the Preflight sheet; the tray
+              // settles back rather than sitting at full strength behind it.
+              dimmed={preflightOpen}
+              onStart={() => setPreflightOpen(true)}
+            />
+          )}
           {/* The rows used to sit directly on the page background, with nothing
               between <main> and <table> declaring a surface — so the table was
               not an object, it was ink on the canvas. */}
@@ -403,23 +423,6 @@ export function CandidatesScreen() {
             />
           </div>
 
-          {/* Docked to the foot of the list column, not floating over it: the
-              scroller ends where the tray begins, so the last row is reachable
-              without a scrim or bottom padding compensating for an overlay.
-              It shows the shortlist rather than asserting a number, which is
-              what earns it the space on the All tab too. */}
-          {tray.render && (
-            <div className={cx(trayOverlays && 'absolute inset-x-0 bottom-0 z-10')}>
-              <ShortlistTray
-                people={shortlisted.length ? shortlisted : trayPeople.current}
-                leaving={tray.leaving}
-                // Committing hands the decision to the Preflight sheet; the tray
-                // settles back rather than sitting at full strength behind it.
-                dimmed={preflightOpen}
-                onStart={() => setPreflightOpen(true)}
-              />
-            </div>
-          )}
           </div>
 
           {railOpen && (
@@ -620,32 +623,39 @@ function ShortlistTray({
   return (
     <div
       className={cx(
-        'shrink-0 flex items-center gap-3 px-5 py-2.5',
-        'bg-[var(--bg2)] border-t border-[var(--beige-400)] shadow-[var(--shadow-md)]',
+        'relative overflow-hidden shrink-0 flex items-center gap-3 px-5 py-3',
+        // The wash, not a flat fill. A slab of green-300 separated the band
+        // from the table by brute force and looked like a warning; the same
+        // painting the cold start and the outreach queue use gives it its own
+        // material instead of its own colour.
+        'bg-[var(--bg3)] border-b border-[var(--border-color)]',
         'transition-opacity duration-200 ease-[var(--ease-out-quint)]',
         // Backwards fill, never both: a filled animation would leave this a
         // permanent stacking context and trap the menus above it.
         leaving
           ? 'animate-[emaOut_160ms_var(--ease-out-quint)_forwards]'
-          : 'animate-[emaRise_240ms_var(--ease-out-quint)_backwards]',
+          : 'animate-[emaDrop_260ms_var(--ease-out-quint)_backwards]',
         dimmed && 'opacity-60',
       )}
     >
+      {/* Behind everything: .wash is absolute at z-index 0, so the content
+          below it is lifted rather than left to paint underneath. */}
+      <Wash ambient tone="outcome" strength={0.7} />
       {/* Who, at a glance. Names carry the same information for screen
           readers, so the stack itself stays decorative. */}
       {/* The faces overlap by 6px; hovering separates them so each is legible.
           Gated on a real hover pointer — on touch every tap would trigger it. */}
-      <div className="group flex shrink-0 pl-1.5" aria-hidden>
+      <div className="relative z-10 group flex shrink-0 pl-1.5" aria-hidden>
         {shown.map((c, i) => (
           <span key={c.id} className={cx(FAN, '-ml-1.5')} style={{ ['--fan' as string]: `${i * 2}px` }}>
-            <Avatar name={c.name} size={26} tone="beige" className="ring-2 ring-[var(--bg2)]" />
+            <Avatar name={c.name} size={26} tone="beige" className="ring-2 ring-[var(--bg3)]" />
           </span>
         ))}
         {n > shown.length && (
           <span
             className={cx(
               FAN, '-ml-1.5 items-center justify-center size-[26px] rounded-full',
-              'ring-2 ring-[var(--bg2)] bg-[var(--beige-200)] text-[var(--fg2)] text-[10px] font-bold tabular-nums',
+              'ring-2 ring-[var(--bg3)] bg-[var(--beige-200)] text-[var(--fg2)] text-[10px] font-bold tabular-nums',
             )}
             style={{ ['--fan' as string]: `${shown.length * 2}px` }}
           >
@@ -654,7 +664,7 @@ function ShortlistTray({
         )}
       </div>
 
-      <div className="min-w-0 flex-1">
+      <div className="relative z-10 min-w-0 flex-1">
         {/* The count changes from the All tab and from the bulk bar too. */}
         <div role="status" className="text-sm font-bold text-[var(--fg1)]">
           {/* Re-keyed on the count, so a change replays the entrance on the
@@ -675,7 +685,7 @@ function ShortlistTray({
         aria-label={`Start outreach with ${n} shortlisted candidate${n === 1 ? '' : 's'}`}
         // The global focus halo is green and invisible against a green button;
         // this is the same ring held off it by a white gap.
-        className="shrink-0 focus-visible:shadow-[0_0_0_2px_var(--bg2),0_0_0_4px_var(--brand-primary)]"
+        className="relative z-10 shrink-0 focus-visible:shadow-[0_0_0_2px_var(--bg3),0_0_0_4px_var(--brand-primary)]"
       >
         Start outreach
       </Button>

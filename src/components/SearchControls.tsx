@@ -275,7 +275,10 @@ export function WeightScale({
           key={share}
           className="text-xs text-[var(--fg3)] tabular-nums whitespace-nowrap animate-[emaFade_160ms_var(--ease-out-quint)_backwards]"
         >
-          {share}{shareShort ? '%' : '% of the score'}
+          {/* Just the number. The card header already says these are shares
+              of the score, most to least — repeating it on every row was six
+              copies of one sentence inside one card. */}
+          {share}%
         </span>
       )}
     </div>
@@ -394,7 +397,7 @@ export function ScorecardRow({
               ? 'Required — scoring 1 or 2 here caps the candidate. Counts double.'
               : 'Preferred — shapes the ranking, never excludes.'}
             className={cx(
-              'shrink-0 text-[10px] uppercase tracking-[1px] font-bold px-2 py-1 rounded-xs cursor-pointer transition-colors',
+              'shrink-0 text-[11px] font-medium capitalize px-2 py-0.5 rounded-pill cursor-pointer transition-colors',
               c.type === 'required'
                 ? 'bg-[var(--success-bg)] border border-[var(--success-border)] text-[var(--success-text)] hover:bg-[var(--green-300)] active:bg-[var(--green-400)]'
                 : 'bg-[var(--beige-200)] border border-[var(--beige-500)] text-[var(--fg2)] hover:bg-[var(--beige-300)] active:bg-[var(--beige-400)]',
@@ -456,7 +459,7 @@ export function ScorecardRow({
         aria-label={`${c.name} is ${c.type}. Toggle required or preferred`}
         title="Toggle required / preferred"
         className={cx(
-          'shrink-0 text-[10px] uppercase tracking-[1px] font-bold px-2 py-1 rounded-xs cursor-pointer transition-colors',
+          'shrink-0 text-[11px] font-medium capitalize px-2 py-0.5 rounded-pill cursor-pointer transition-colors',
           !pending && 'animate-[emaPop_160ms_var(--ease-out-quint)_backwards]',
           pending && 'invisible',
           c.type === 'required'

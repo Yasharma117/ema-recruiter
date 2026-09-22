@@ -15,24 +15,30 @@ import { Avatar, Button, cx } from '../components/ui';
  * does a second job: resolving that cell from the reply.
  */
 
+/* Choosing is not committing.
+   A selected option used to take the solid brand fill — the same green as the
+   button that actually sends the thing, sitting directly above it. Two filled
+   green blocks on one card, only one of which does anything. A selection now
+   reads as a selection: its own tint, its own border, its own ink, and the
+   fill stays reserved for the single action on the card. */
 const OUTCOMES: { id: Outcome; label: string; consequence: string; tone: string }[] = [
   {
     id: 'interested',
     label: 'Interested',
     consequence: 'Moves to scheduling a call',
-    tone: 'data-[on=true]:bg-[var(--brand-primary)] data-[on=true]:border-[var(--brand-primary)] data-[on=true]:text-white',
+    tone: 'data-[on=true]:bg-[var(--success-bg-subtle)] data-[on=true]:border-[var(--brand-primary)] data-[on=true]:text-[var(--success-text)]',
   },
   {
     id: 'maybe-later',
     label: 'Maybe later',
     consequence: 'Snoozes, keeps them in the search',
-    tone: 'data-[on=true]:bg-[var(--pending)] data-[on=true]:border-[var(--pending)] data-[on=true]:text-white',
+    tone: 'data-[on=true]:bg-[var(--warning-bg-subtle)] data-[on=true]:border-[var(--warning-border)] data-[on=true]:text-[var(--warning-text)]',
   },
   {
     id: 'not-interested',
     label: 'Not interested',
     consequence: 'Closes and stops all follow-ups',
-    tone: 'data-[on=true]:bg-[var(--surface-dark)] data-[on=true]:border-[var(--surface-dark)] data-[on=true]:text-[var(--surface-dark-fg-strong)]',
+    tone: 'data-[on=true]:bg-[var(--bg3)] data-[on=true]:border-[var(--beige-700)] data-[on=true]:text-[var(--fg1)]',
   },
 ];
 
@@ -143,6 +149,7 @@ export function ClassifyPanel({
                 <div className="flex items-center gap-1.5 mt-2.5">
                   <Button
                     size="xs"
+                    variant="secondary"
                     icon={<Check size={11} weight="bold" />}
                     onClick={() => {
                       onResolveCell(r.criterionId, r.score, r.quote);

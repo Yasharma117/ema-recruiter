@@ -70,8 +70,17 @@ export function PreflightSheet({
     <Modal label="Start outreach" open={open} onClose={onClose} width={560}>
       <div className="flex items-start gap-3 px-5 pt-4 pb-3">
         <div className="flex-1">
-          <h2 className="text-lg font-bold text-[var(--fg1)]">Start outreach · {people.length} candidates</h2>
-          <p className="text-sm text-[var(--fg2)] mt-0.5">Resolve anything below, then confirm.</p>
+          <h2 className="text-lg font-bold text-[var(--fg1)]">Start outreach</h2>
+          {/* The heading said 9 and the button said 8, with nothing between
+              them accounting for the difference — both numbers were right and
+              the arithmetic was invisible. It is stated once, here, and every
+              other number on the screen is one of these three. */}
+          <p className="text-sm text-[var(--fg2)] mt-0.5 tabular-nums">
+            {people.length} selected
+            {blocked.size > 0 && ` · ${blocked.size} skipped`}
+            {' · '}
+            <span className="font-medium text-[var(--fg1)]">{todayCount} will send today</span>
+          </p>
         </div>
         <IconButton icon={<X size={16} />} onClick={onClose} title="Close" />
       </div>
@@ -165,10 +174,10 @@ export function PreflightSheet({
         <span className="text-xs text-[var(--fg3)] flex-1">
           Ema stops all follow-ups the moment someone replies.
         </span>
-        <Button size="sm" variant="secondary" color="altBrand" onClick={() => onConfirm(eligible.map((c) => c.id))}>
+        <Button variant="secondary" color="altBrand" onClick={() => onConfirm(eligible.map((c) => c.id))}>
           Review drafts first ({eligible.length})
         </Button>
-        <Button size="sm" disabled={todayCount === 0} onClick={() => onConfirm(eligible.map((c) => c.id))}>
+        <Button disabled={todayCount === 0} onClick={() => onConfirm(eligible.map((c) => c.id))}>
           {/* Resolving a blocker changes nothing on the blocker itself — the
               only place the decision lands is this number, at the far corner
               from the radio you just pressed. Re-keyed so it replays. */}

@@ -11,6 +11,7 @@ const RUN_MS = 3600;
 const SEARCH_TOTALS = { scored: SEARCH.profilesScored, matched: SEARCH.matched };
 import { OUTREACH } from './data/outreach';
 import type { ToastMsg } from './components/ui';
+import { clearSearchConfig } from './lib/searchConfig';
 
 /**
  * One thing that happened while you were looking elsewhere.
@@ -293,6 +294,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     },
 
     resetDemo: () => {
+      // The search's own configuration lives outside the store, in a module
+      // cache that survives navigation — a reset that left it standing would
+      // put a configured search back on a wiped demo.
+      clearSearchConfig();
       setSearchPhase('draft');
       setScanProgress(0);
       setShortlist(new Set());
