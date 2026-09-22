@@ -170,10 +170,12 @@ export function PreflightSheet({
         </Line>
       </div>
 
-      <div className="flex items-center gap-2 px-5 py-3 border-t border-[var(--beige-300)] shrink-0">
-        <span className="text-xs text-[var(--fg3)] flex-1">
-          Ema stops all follow-ups the moment someone replies.
-        </span>
+      {/* The note sits under the actions, not beside them. Sharing a row with
+          two buttons it had to wrap around, so a single reassuring sentence
+          broke across lines against their left edge and read as a label on the
+          secondary button. It qualifies both, so it goes below both. */}
+      <div className="px-5 py-3.5 border-t border-[var(--border-color)] shrink-0">
+      <div className="flex items-center justify-end gap-2">
         <Button variant="secondary" color="altBrand" onClick={() => onConfirm(eligible.map((c) => c.id))}>
           Review drafts first ({eligible.length})
         </Button>
@@ -187,6 +189,10 @@ export function PreflightSheet({
           </span>
           {' '}today
         </Button>
+      </div>
+        <p className="text-xs text-[var(--fg2)] text-right mt-2.5 mb-0">
+          Ema stops all follow-ups the moment someone replies.
+        </p>
       </div>
     </Modal>
   );

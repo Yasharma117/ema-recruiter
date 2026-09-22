@@ -94,6 +94,9 @@ const NOT_BULKABLE = new Set<ActionId>([
  */
 const WALK_THE_QUEUE = new Set<ActionId>(['review-and-send', 'read-and-classify']);
 
+/** One unit of work: this person, in the state they are in right now. */
+const workKey = (r: OutreachRecord) => `${r.candidateId}:${r.state}`;
+
 export function OutreachFocusBoard() {
   const store = useStore();
   const { candidates, outreach, senders, criteria, forced, toasts, dismissToast, toast } = store;
@@ -145,6 +148,24 @@ export function OutreachFocusBoard() {
     : activeCol ? allQueue.filter((r) => activeCol.states.includes(r.state)) : allQueue;
   const waiting = records.length - allQueue.length;
 
+  /* How far through the queue you are.
+     Two wrong models preceded this one. `cursor / queue.length` never moved,
+     because acting on a card removes it and leaves the cursor where it was —
+     same index, shorter list. Measuring cleared-against-starting-total does
+     not move either, and for a more interesting reason: the queue is not a
+     list you drain. `replied` is human work, and marking it interested
+     produces `interested`, which is *also* human work ("schedule the call").
+     The record never leaves. Only a terminal action genuinely removes one.
+
+     So the unit is a job, not a person: candidate plus the state they were in
+     when you dealt with them. Handling Priya's reply counts, and the call you
+     now owe Priya counts separately as still outstanding — which is the truth,
+     and it means the bar moves on every action while "N left" stays honest. */
+  const handled = React.useRef(new Set<string>());
+  const outstanding = queue.filter((r) => !handled.current.has(workKey(r))).length;
+  const passTotal = handled.current.size + outstanding;
+  const progress = passTotal ? (passTotal - outstanding) / passTotal : 1;
+
   const record = queue[Math.min(cursor, queue.length - 1)] ?? null;
   /* The focus view holds one item at a time, so the background can say where
      that item sits in the funnel — the same painting as the search screen,
@@ -167,6 +188,9 @@ export function OutreachFocusBoard() {
     }
     if (id === 'join-call') { toast('Opening Google Meet.'); return; }
     if (id === 'view-other-search') { toast('Opening “Staff Backend — EMEA”.'); return; }
+    // Only here, past the early returns: opening the schedule or confirm
+    // modal is not having dealt with the card, it is starting to.
+    handled.current.add(workKey(r));
     store.act(r.candidateId, id);
     setCursor((c) => Math.min(c, Math.max(0, queue.length - 2)));
   };
@@ -570,7 +594,7 @@ export function OutreachFocusBoard() {
                        width animation is both a layout property and a 300ms
                        lag on the fastest loop on the screen. */
                     className="h-full rounded-full bg-[var(--brand-primary)]"
-                    style={{ width: `${queue.length ? (cursor / queue.length) * 100 : 100}%` }}
+                    style={{ width: `${progress * 100}%` }}
                   />
                 </div>
                 <span className="text-sm font-bold text-[var(--fg1)] tabular-nums">

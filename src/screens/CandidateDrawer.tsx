@@ -261,7 +261,7 @@ export function CandidateDrawer({
               <div className={cx(
                 'flex items-start gap-2 text-xs px-2.5 py-2 rounded-md border',
                 r.gateOverridden
-                  ? 'bg-[var(--success-bg-subtle)] border-[var(--success-border)] text-[var(--success-text)]'
+                  ? 'bg-[var(--success-bg-subtle)] border-[var(--success-border)] text-[var(--success-text-strong)]'
                   : 'bg-[var(--error-bg-subtle)] border-[var(--error-border)] text-[var(--error-text)]',
               )}>
                 <ShieldWarning size={13} className="mt-px shrink-0" />

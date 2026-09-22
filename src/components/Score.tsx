@@ -11,7 +11,7 @@ export const BAND_TEXT: Record<Band, string> = {
 };
 
 const BAND_PILL: Record<Band, string> = {
-  good: 'bg-[var(--success-bg)] border-[var(--success-border)] text-[var(--success-text)]',
+  good: 'bg-[var(--success-bg)] border-[var(--success-border)] text-[var(--success-text-strong)]',
   potential: 'bg-[var(--pending-bg)] border-[var(--pending-border)] text-[var(--pending-text)]',
   'no-match': 'bg-[var(--muted-bg)] border-[var(--muted-border)] text-[var(--muted-text)]',
 };
@@ -212,7 +212,7 @@ export function CriterionAudit({
                  ink — so the required/preferred distinction that gates the
                  whole score rendered as one chip printed twice. */
               criterion.type === 'required'
-                ? 'bg-[var(--success-bg)] text-[var(--success-text)]'
+                ? 'bg-[var(--success-bg)] text-[var(--success-text-strong)]'
                 : 'bg-[var(--beige-200)] text-[var(--fg2)]',
             )}>
               {criterion.type}
@@ -270,7 +270,7 @@ export function CriterionAudit({
       {cs && effectiveScore(cs) !== null && (
         <div className="px-3 pb-3 space-y-2">
           {cs.override && (
-            <div className="flex items-start gap-1.5 text-xs text-[var(--success-text)] bg-[var(--success-bg-subtle)] border border-[var(--green-500)] rounded-sm px-2 py-1.5">
+            <div className="flex items-start gap-1.5 text-xs text-[var(--success-text-strong)] bg-[var(--success-bg-subtle)] border border-[var(--green-500)] rounded-sm px-2 py-1.5">
               {cs.override.via === 'reply'
                 ? <Question size={12} weight="bold" className="mt-px shrink-0" />
                 : <User size={12} weight="bold" className="mt-px shrink-0" />}

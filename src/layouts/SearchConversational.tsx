@@ -147,6 +147,8 @@ const STEP = 150;
     it is still fading as the screen changes, which is what keeps the press
     feeling answered rather than waited on. */
 const RIPPLE_MS = 240;
+/** Matches the .filter-move-* animations in index.css. */
+const FILTER_MOVE_MS = 1800;
 /** The beat between answering a question and Ema asking the next one.
     340ms was shorter than the selection animation it was interrupting: you
     pressed, and the card moved on before the pill had finished going green. */
@@ -380,8 +382,21 @@ export function SearchConversational() {
   };
   const begin = () => { store.runSearch(); navigate('/candidates'); };
 
-  const setMode = (id: string, mode: FilterMode) =>
+  /* Changing a filter's mode moves it to another group, so the row unmounts
+     from the list it was in and mounts in the new one. A pulse tracked inside
+     the row would lose its memory in that remount — the parent holds it, and
+     the remount is what starts the animation. */
+  const [moved, setMoved] = React.useState<{ id: string; mode: FilterMode } | null>(null);
+  React.useEffect(() => {
+    if (!moved) return;
+    const t = setTimeout(() => setMoved(null), FILTER_MOVE_MS);
+    return () => clearTimeout(t);
+  }, [moved]);
+
+  const setMode = (id: string, mode: FilterMode) => {
     setFilters((prev) => prev.map((f) => (f.id === id ? { ...f, mode, suggested: false } : f)));
+    setMoved({ id, mode });
+  };
 
   /* ------------------------------ act 1: cold ----------------------------- */
 
@@ -716,6 +731,8 @@ export function SearchConversational() {
                   className={cx(
                     'flex items-center gap-2 px-1.5 py-1 rounded-sm transition-colors duration-150',
                     'hover:bg-[var(--beige-100)] focus-within:bg-[var(--beige-100)]',
+                    // The colour of the group it has just joined.
+                    moved?.id === f.id && `filter-move-${moved.mode}`,
                     /* backwards, never both: a filled animation keeps this row
                        a stacking context after it has landed, and the open mode
                        menu of a row above would paint underneath it. */

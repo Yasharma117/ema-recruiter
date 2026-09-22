@@ -576,7 +576,7 @@ function DetailPane({
               {m.draft && <Sparkle size={12} weight="fill" className="text-[var(--ai-magic-text)]" />}
               <span className={cx(
                 'text-xs font-bold uppercase tracking-[1.2px]',
-                m.draft ? 'text-[var(--ai-magic-text)]' : m.direction === 'in' ? 'text-[var(--success-text)]' : 'text-[var(--fg3)]',
+                m.draft ? 'text-[var(--ai-magic-text)]' : m.direction === 'in' ? 'text-[var(--success-text-strong)]' : 'text-[var(--fg3)]',
               )}>
                 {m.draft ? 'Drafted by Ema · Review before sending'
                   : m.direction === 'in' ? `${candidate.name.split(' ')[0]} replied`

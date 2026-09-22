@@ -36,7 +36,7 @@ function verdictOf(score: number | null): Verdict {
 }
 
 const CELL: Record<Verdict, { glyph: string; cls: string; label: string }> = {
-  good: { glyph: '●', cls: 'text-[var(--success-text)] bg-[var(--success-bg-subtle)]', label: 'Good match' },
+  good: { glyph: '●', cls: 'text-[var(--success-text-strong)] bg-[var(--success-bg-subtle)]', label: 'Good match' },
   potential: { glyph: '◐', cls: 'text-[var(--pending)] bg-[var(--warning-bg-subtle)]', label: 'Potential fit' },
   no: { glyph: '✕', cls: 'text-[var(--gray-900)] bg-[var(--gray-50)]', label: 'Not a match' },
   unknown: { glyph: '—', cls: 'text-[var(--fg3)] bg-[var(--beige-50)]', label: 'No evidence' },

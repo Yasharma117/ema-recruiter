@@ -159,6 +159,11 @@
 --------------------------------------------------------------------------- */
 :root {
   --success-text:   var(--green-900);
+  /* Green ink for a label sitting *on* a green tint. --success-text is
+     green-900, which is 5.21:1 on success-bg-subtle — legal, but a mid-green on
+     a pale green at 12px uppercase reads as a smudge rather than as words.
+     green-960 keeps the hue and takes it to 11.58:1. */
+  --success-text-strong: var(--green-960);
   --error-text:     var(--red-930);
   --warning-text:   var(--orange-960);
   --info-text:      var(--blue-960);
@@ -385,6 +390,28 @@
   /* The press still answers; the light does not travel. */
   .ripple { display: none; }
   .press:active { transform: none; }
+}
+
+/* ── A filter changing group ──
+   Same shape as the scorecard pulse: hold the tint, then release it. The colour
+   is the group it has just joined, not a direction — Must have, Preferred and
+   Exclude are three kinds of rule rather than three points on a scale, and the
+   row's own chip is already those colours, so the flash and the chip agree.
+
+   `from` with no `to`: the row's resting background is transparent, and the
+   implicit end frame is whatever it already computes to. */
+@keyframes filterMoveMust      { 0%, 45% { background-color: var(--success-bg) } }
+@keyframes filterMovePreferred { 0%, 45% { background-color: var(--beige-300) } }
+@keyframes filterMoveExclude   { 0%, 45% { background-color: var(--error-bg) } }
+
+.filter-move-must      { animation: filterMoveMust 1800ms cubic-bezier(.4, 0, .6, 1); }
+.filter-move-preferred { animation: filterMovePreferred 1800ms cubic-bezier(.4, 0, .6, 1); }
+.filter-move-exclude   { animation: filterMoveExclude 1800ms cubic-bezier(.4, 0, .6, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  .filter-move-must      { animation: filterMoveMust 1200ms linear; }
+  .filter-move-preferred { animation: filterMovePreferred 1200ms linear; }
+  .filter-move-exclude   { animation: filterMoveExclude 1200ms linear; }
 }
 
 /* Visually hidden, still announced. */

@@ -112,7 +112,7 @@ export type BadgeVariant =
 // green-200". Changing what success looks like is then a one-line token edit.
 const BADGE: Record<BadgeVariant, string> = {
   default: 'text-[var(--fg2)] border-[var(--border-color)] bg-[var(--bg3)]',
-  success: 'text-[var(--success-text)] border-[var(--success-border)] bg-[var(--success-bg)]',
+  success: 'text-[var(--success-text-strong)] border-[var(--success-border)] bg-[var(--success-bg)]',
   error: 'text-[var(--error-text)] border-[var(--error-border)] bg-[var(--error-bg)]',
   info: 'text-[var(--info-text)] border-[var(--info-border)] bg-[var(--info-bg)]',
   warning: 'text-[var(--warning-text)] border-[var(--warning-border)] bg-[var(--warning-bg)]',
@@ -621,7 +621,7 @@ export function Banner({
     info: 'bg-[var(--info-bg-subtle)] border-[var(--info-border)] text-[var(--info-text)]',
     warning: 'bg-[var(--warning-bg-subtle)] border-[var(--warning-border)] text-[var(--warning-text)]',
     error: 'bg-[var(--error-bg-subtle)] border-[var(--error-border)] text-[var(--error-text)]',
-    success: 'bg-[var(--success-bg-subtle)] border-[var(--success-border)] text-[var(--success-text)]',
+    success: 'bg-[var(--success-bg-subtle)] border-[var(--success-border)] text-[var(--success-text-strong)]',
     magic: 'bg-[var(--ai-magic-bg-subtle)] border-[var(--ai-magic-border)] text-[var(--purple-960)]',
   }[variant];
   return (

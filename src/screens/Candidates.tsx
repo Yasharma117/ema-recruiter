@@ -330,7 +330,7 @@ export function CandidatesScreen() {
                 'flex items-center gap-1.5 h-8 px-2.5 rounded-md border text-xs font-medium cursor-pointer',
                 'transition-colors duration-150 active:bg-[var(--beige-200)]',
                 railOpen
-                  ? 'bg-[var(--success-bg-subtle)] border-[var(--brand-primary)] text-[var(--success-text)] hover:bg-[var(--green-200)]'
+                  ? 'bg-[var(--success-bg-subtle)] border-[var(--brand-primary)] text-[var(--success-text-strong)] hover:bg-[var(--green-200)]'
                   : 'bg-white border-[var(--beige-500)] text-[var(--fg2)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-100)]',
               )}
             >
@@ -458,7 +458,7 @@ export function CandidatesScreen() {
                           className={cx(
                             'text-[10px] uppercase tracking-[1px] font-bold px-1.5 py-1 rounded-xs cursor-pointer transition-colors',
                             c.type === 'required'
-                              ? 'bg-[var(--success-bg)] text-[var(--success-text)] hover:bg-[var(--green-300)] active:bg-[var(--green-400)]'
+                              ? 'bg-[var(--success-bg)] text-[var(--success-text-strong)] hover:bg-[var(--green-300)] active:bg-[var(--green-400)]'
                               : 'bg-[var(--beige-200)] text-[var(--fg2)] hover:bg-[var(--beige-300)] active:bg-[var(--beige-400)]',
                           )}
                           title="Toggle required / preferred"

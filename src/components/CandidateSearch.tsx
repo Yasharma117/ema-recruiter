@@ -91,7 +91,7 @@ export function CandidateSearch({
                 'flex items-center gap-1.5 h-full px-2.5 rounded-r-md text-xs font-medium cursor-pointer shrink-0',
                 'transition-colors duration-150',
                 activeCount || open
-                  ? 'text-[var(--success-text)] bg-[var(--success-bg-subtle)] hover:bg-[var(--success-bg)]'
+                  ? 'text-[var(--success-text-strong)] bg-[var(--success-bg-subtle)] hover:bg-[var(--success-bg)]'
                   : 'text-[var(--fg2)] hover:text-[var(--fg1)] hover:bg-[var(--beige-100)]',
                 'active:bg-[var(--beige-200)]',
               )}
