@@ -142,7 +142,7 @@ export const CANDIDATES: Candidate[] = [
     id: 'c_priya',
     name: 'Priya Venkatesan',
     title: 'Senior Staff Engineer',
-    company: 'Ramp',
+    company: 'Mercury',
     companyTenure: '3 weeks',
     location: 'New York, NY',
     timezone: 'EDT',
@@ -157,17 +157,17 @@ export const CANDIDATES: Candidate[] = [
     education: 'PhD Computer Science, UT Austin',
     summary:
       'Came through our own ATS eleven months ago for a Staff Backend role and got to final round. ' +
-      'Started at Ramp three weeks ago, which makes her a long shot right now but worth a relationship.',
+      'Started at Mercury three weeks ago, which makes her a long shot right now but worth a relationship.',
     roles: [
-      { title: 'Senior Staff Engineer', company: 'Ramp', start: 'Mar 2026', end: null },
+      { title: 'Senior Staff Engineer', company: 'Mercury', start: 'Mar 2026', end: null },
       { title: 'Staff Engineer', company: 'Plaid', start: 'Feb 2021', end: 'Feb 2026', bullet: 'Led the transaction enrichment ML service — 28k req/s, 99.98% availability.' },
       { title: 'Senior Engineer', company: 'Two Sigma', start: 'Aug 2017', end: 'Jan 2021' },
     ],
     news: [
-      { title: 'Joined Ramp as Senior Staff Engineer', source: 'LinkedIn', when: '3 weeks ago' },
+      { title: 'Joined Mercury as Senior Staff Engineer', source: 'LinkedIn', when: '3 weeks ago' },
     ],
     signals: [
-      { kind: 'recently-moved', label: 'Started 3 weeks ago', detail: 'Started at Ramp 3 weeks ago — unlikely to move.' },
+      { kind: 'recently-moved', label: 'Started 3 weeks ago', detail: 'Started at Mercury 3 weeks ago — unlikely to move.' },
       { kind: 'previously-rejected', label: 'Previously interviewed', detail: 'Final round for Staff Backend, Apr 2025. Feedback: strong systems depth, passed on for domain fit.' },
     ],
     scores: [
@@ -176,7 +176,7 @@ export const CANDIDATES: Candidate[] = [
         ev.ats('Greenhouse · Staff Backend, Apr 2025', 'Interview panel', 'Walked through the Plaid enrichment architecture in depth. Panel rated systems design 4/4.'),
       ]),
       s('c_seniority', 5, 'high', 'Senior Staff, 10 years', undefined, [
-        ev.work('Senior Staff Engineer · Ramp', 'Mar 2026 – present', ''),
+        ev.work('Senior Staff Engineer · Mercury', 'Mar 2026 – present', ''),
       ]),
       s('c_regulated', 4, 'high', '5 years fintech at Plaid', '4 not 5: fintech throughout, but no direct model-governance ownership stated.', [
         ev.work('Staff Engineer · Plaid', 'Feb 2021 – Feb 2026', 'Transaction enrichment across bank-linked accounts under SOC 2.'),

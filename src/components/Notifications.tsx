@@ -49,11 +49,13 @@ export function TimeChange({ from, to, size = 'sm' }: {
     <span className={cx('flex items-center gap-1.5 flex-wrap', text)}>
       {from && (
         <>
-          <span className="text-[var(--fg3)] line-through">{from.yours}</span>
+          <span className="text-[var(--fg3)] line-through tabular-nums">{from.yours}</span>
           <ArrowRight size={11} weight="bold" className="text-[var(--fg3)] shrink-0" />
         </>
       )}
-      <span className="font-medium text-[var(--fg1)] tabular-nums">{to.yours}</span>
+      {/* The new time is the whole point of the message: it carries the weight,
+          the old one is struck-through context at a tone below. */}
+      <span className="font-bold text-[var(--fg1)] tabular-nums">{to.yours}</span>
       {to.outsideCoreHours && (
         <span className="inline-flex items-center h-5 px-1.5 rounded-pill text-xs font-medium bg-[var(--warning-bg)] text-[var(--warning-text)] border border-[var(--warning-border)]">
           Before your working day
@@ -142,14 +144,15 @@ export function NotificationBell() {
         // still. A badge that keeps moving is nagging on a screen kept open
         // all day.
         //
-        // Positioned against the glyph, not the button. IconButton is 36px and
-        // the bell inside it is 16px, so a dot pinned to the button's corner
-        // sits ~10px clear of the icon in open space and reads as a stray mark
-        // rather than as a badge on the bell.
+        // Positioned against the glyph, not the button, and just clear of it.
+        // IconButton is 36px with a 16px bell centred, so the glyph occupies
+        // 10–26px. At 7px the dot's ring bit into the bell's own outline and
+        // the badge read as damage to the icon; at 4px it sits on the corner
+        // the glyph ends at, still well inside the button so nothing clips it.
         <span
           aria-hidden
           className={cx(
-            'absolute top-[7px] right-[7px] size-2 rounded-full bg-[var(--warning)]',
+            'absolute top-1 right-1 size-2 rounded-full bg-[var(--warning)]',
             'ring-2 ring-[var(--app-chrome)] animate-[emaPop_200ms_var(--ease-out-quint)]',
           )}
         />
@@ -285,7 +288,7 @@ export function NotificationAlert() {
     // that cannot run on the compositor.
     <div className="shrink-0 overflow-hidden bg-[var(--warning-bg-subtle)] border-b border-[var(--warning-border)]">
       <div className={cx('px-5 py-2.5', fresh && 'animate-[emaDrop_320ms_var(--ease-out-quint)_backwards]')}>
-        <div className="max-w-[1180px] mx-auto flex items-center gap-3 bg-white border border-[var(--warning-border)] rounded-lg shadow-[var(--shadow-sm)] pl-3 pr-2 py-2.5">
+        <div className="flex items-center gap-3 bg-white border border-[var(--warning-border)] rounded-lg shadow-[var(--shadow-sm)] pl-3 pr-2 py-2.5">
           <span className="w-1 self-stretch rounded-full bg-[var(--warning)] shrink-0" aria-hidden />
 
           {candidate
@@ -293,10 +296,18 @@ export function NotificationAlert() {
             : <CalendarBlank size={18} weight="bold" className="text-[var(--warning-text)] shrink-0" />}
 
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium text-[var(--fg1)] truncate">
-              {open.whileAway ? `While you were away · ${open.title}` : open.title}
+            {/* "While you were away" is context for the event, not part of its
+                headline — it was prepended into the same string, which pushed
+                the thing that actually happened past the truncation. */}
+            {open.whileAway && (
+              <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--warning-text)] mb-0.5">
+                While you were away
+              </div>
+            )}
+            <div className="text-base font-bold text-[var(--fg1)] truncate leading-6">
+              {open.title}
             </div>
-            <div className="mt-0.5"><TimeChange from={from} to={to} /></div>
+            <div className="mt-1"><TimeChange from={from} to={to} size="sm" /></div>
           </div>
 
           {alsoWaiting > 0 && (

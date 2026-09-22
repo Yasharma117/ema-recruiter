@@ -201,7 +201,7 @@ export function CandidateDrawer({
               <div className="flex items-center gap-1.5 mb-1.5">
                 <Sparkle size={13} weight="fill" className="text-[var(--ai-magic-text)]" />
                 <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--ai-magic-text)]">
-                  Written by Ema · Review before sending
+                  Drafted by Ema · Review before sending
                 </span>
               </div>
               <p className="text-sm text-[var(--fg1)] leading-[21px]">{candidate.summary}</p>

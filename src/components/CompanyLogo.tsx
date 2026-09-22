@@ -32,7 +32,6 @@ const DOMAIN: Record<string, string> = {
   Nubank: 'nubank.com.br',
   Palantir: 'palantir.com',
   Plaid: 'plaid.com',
-  Ramp: 'ramp.com',
   Robinhood: 'robinhood.com',
   Splunk: 'splunk.com',
   Spotify: 'spotify.com',
@@ -42,6 +41,25 @@ const DOMAIN: Record<string, string> = {
   'Wells Fargo': 'wellsfargo.com',
   Wise: 'wise.com',
   iFood: 'ifood.com.br',
+  // The generated half of the list draws from COMPANIES in data/candidates.ts.
+  'Checkout.com': 'checkout.com',
+  Dave: 'dave.com',
+  Feedzai: 'feedzai.com',
+  Forter: 'forter.com',
+  Lithic: 'lithic.com',
+  Marqeta: 'marqeta.com',
+  Mercury: 'mercury.com',
+  'Modern Treasury': 'moderntreasury.com',
+  Monzo: 'monzo.com',
+  Pagaya: 'pagaya.com',
+  Revolut: 'revolut.com',
+  Riskified: 'riskified.com',
+  Sift: 'sift.com',
+  SoFi: 'sofi.com',
+  Socure: 'socure.com',
+  Unit: 'unit.co',
+  Upstart: 'upstart.com',
+  'Zest AI': 'zest.ai',
   // Northwind Financial is invented, so it has no domain and always monograms.
 };
 

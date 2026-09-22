@@ -153,27 +153,40 @@ export function formatScore(r: Ranking): string {
 }
 
 /**
- * The ≤72-char clause under every score. Names the best and worst scored
- * criterion so each row says *why*, not just *how much*.
+ * Why a row scored what it did: its best scored criterion and, when there is
+ * one, its worst.
+ *
+ * This used to return a single 72-char sentence. The two halves competed for
+ * one budget, so the gap was usually the part that got cut, and "Strong:" and
+ * "Gap:" were the same weight and colour as the findings they introduced — the
+ * cell was a run-on line you had to read rather than scan. Split, each half
+ * gets its own line, its own budget and its own emphasis.
  */
-export function reasonClause(candidate: Candidate, criteria: Criterion[]): string {
+export interface Reason {
+  /** Set when a required criterion failed; nothing else is worth saying. */
+  gate?: string;
+  strong?: string;
+  gap?: string;
+}
+
+export function reasonParts(candidate: Candidate, criteria: Criterion[]): Reason {
   const r = rank(candidate, criteria);
-  // A failed gate is the only thing worth saying about a row until it's lifted.
-  if (r.gateFailed && !r.gateOverridden) return r.gateReason!;
+  if (r.gateFailed && !r.gateOverridden) return { gate: r.gateReason! };
 
   const scored = criteria
     .map((c) => ({ c, cs: candidate.scores.find((s) => s.criterionId === c.id) }))
     .filter((x): x is { c: Criterion; cs: CriterionScore } => !!x.cs && effectiveScore(x.cs) !== null)
     .map((x) => ({ ...x, v: effectiveScore(x.cs)! }));
 
-  if (!scored.length) return 'Not enough evidence to score';
+  if (!scored.length) return { gate: 'Not enough evidence to score' };
 
   const best = scored.reduce((a, b) => (b.v > a.v ? b : a));
   const worst = scored.reduce((a, b) => (b.v < a.v ? b : a));
+  const strong = truncate(best.cs.summary, 64);
 
-  const strong = `Strong: ${best.cs.summary}`;
-  if (worst.v >= 4 || worst.c.id === best.c.id) return truncate(strong, 72);
-  return truncate(`${strong} · Gap: ${worst.cs.summary}`, 72);
+  // A worst of 4+ is not a gap, and a single scored criterion cannot be both.
+  if (worst.v >= 4 || worst.c.id === best.c.id) return { strong };
+  return { strong, gap: truncate(worst.cs.summary, 64) };
 }
 
 function truncate(s: string, n: number): string {

@@ -25,7 +25,7 @@ export function Landing() {
         <div className="min-h-full flex flex-col items-center justify-center px-6 py-10">
           <div className="w-full max-w-[560px]">
             <h1 className="text-[30px] leading-[36px] font-bold text-[var(--fg1)] animate-[emaRise_240ms_var(--ease-out-quint)_backwards]">
-              Yash's Ema assignment
+              Yash’s Ema assignment
             </h1>
 
             <div className="mt-6 flex items-start gap-3 flex-wrap animate-[emaRise_240ms_var(--ease-out-quint)_60ms_backwards]">
@@ -51,7 +51,7 @@ export function Landing() {
                 >
                   Explore layout variations
                 </Button>
-                <span className="text-xs text-[var(--fg2)]">The ones we went over on Friday's call.</span>
+                <span className="text-xs text-[var(--fg2)]">The ones we went over on Friday’s call.</span>
               </div>
             </div>
 

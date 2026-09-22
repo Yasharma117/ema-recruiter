@@ -6,7 +6,7 @@ import {
   UsersThree, MagnifyingGlass, CaretUpDown, ArrowUp, ArrowDown, Users, X, Plus, Minus,
 } from '@phosphor-icons/react';
 import type { Candidate, Criterion, OutreachState } from '../lib/types';
-import { rankAll, reasonClause, rank, bandChangeCount, applyOverrides, matchesQuery, weightShares } from '../lib/scoring';
+import { rankAll, reasonParts, rank, bandChangeCount, applyOverrides, matchesQuery, weightShares } from '../lib/scoring';
 import { SEARCH } from '../data/search';
 import { STATES } from '../lib/outreach';
 import {
@@ -499,7 +499,7 @@ export function CandidatesScreen() {
 
         {/* Bulk selection bar */}
         {selected.size > 0 && (
-          <div data-usage="bulk" className="shrink-0 bg-[var(--surface-dark)] text-[var(--surface-dark-fg-strong)] px-5 py-2.5 flex items-center gap-3 flex-wrap animate-[emaRise_200ms_var(--ease-out-quint)]">
+          <div data-usage="bulk" className="shrink-0 bg-[var(--surface-dark)] text-[var(--surface-dark-fg-strong)] px-5 py-3.5 flex items-center gap-3 flex-wrap animate-[emaRise_200ms_var(--ease-out-quint)]">
             <span className="text-sm font-medium">
               {selected.size} selected
               {selected.size > ranked.length && ` across ${Math.ceil(selected.size / 50)} pages`}
@@ -916,9 +916,33 @@ function CandidateTable({
                         </span>
                       )}
                     </div>
-                    <div className="text-xs leading-4 text-[var(--fg3)] truncate flex items-center gap-1">
-                      {candidate.yearsExperience} yrs · {candidate.location}
+                    <div className="text-xs leading-4 text-[var(--fg3)] flex items-center gap-1 min-w-0">
+                      <span className="truncate">
+                        {candidate.yearsExperience} yrs · {candidate.location}
+                      </span>
                       {candidate.source === 'internal' && <Lock size={10} className="shrink-0" />}
+                      {/* Stale, duplicate, current employee, do-not-contact:
+                          every one of these is a fact about the person, so it
+                          rides on the person's own meta line beside the lock
+                          that was already doing this job. Given as bare icons
+                          rather than tinted badges — at 12px on a line of 12px
+                          text, the tint was a chip and the chip was the thing
+                          you saw instead of the name. */}
+                      {candidate.signals.map((sig: any) => {
+                        const Icon = (SIGNAL_ICON as any)[sig.kind] ?? Clock;
+                        return (
+                          <Tooltip key={sig.kind} content={<span className="text-xs">{sig.detail ?? sig.label}</span>} width={240}>
+                            <span className={cx(
+                              'inline-flex shrink-0 rounded-xs',
+                              sig.kind === 'current-employee' || sig.kind === 'duplicate'
+                                ? 'text-[var(--blue-930)]'
+                                : 'text-[var(--warning-text)]',
+                            )}>
+                              <Icon size={12} weight="bold" />
+                            </span>
+                          </Tooltip>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
@@ -956,35 +980,45 @@ function CandidateTable({
                 <ScoreCell candidate={candidate} criteria={criteria} />
               </td>
 
-              {/* Signals ride with the sentence they qualify: two sparse columns
-                  read as a hole in the table, one dense column reads as a row. */}
+              {/* Assessment is text. It held a signal gutter as well, which
+                  meant one column carrying two unrelated things: a judgement of
+                  fit, and a set of facts about the person. At 52px the gutter
+                  finally had enough clearance to not touch the words — and that
+                  just made it obvious it was a second column wearing the first
+                  one's header. The signals moved to the candidate cell; this is
+                  now a left edge and a sentence. */}
               <td className="py-2.5 pr-3 align-middle">
-                <div className="flex items-start gap-1.5 min-w-0">
-                  {candidate.signals.length > 0 && (
-                    <span className="flex items-center gap-1 shrink-0 pt-px">
-                      {candidate.signals.map((s: any) => {
-                        const Icon = (SIGNAL_ICON as any)[s.kind] ?? Clock;
-                        return (
-                          <Tooltip key={s.kind} content={<span className="text-xs">{s.detail ?? s.label}</span>} width={240}>
-                            <span className={cx(
-                              'inline-flex items-center justify-center size-[18px] rounded-xs',
-                              s.kind === 'current-employee' || s.kind === 'duplicate'
-                                ? 'text-[var(--blue-930)] bg-[var(--info-bg-subtle)]'
-                                : 'text-[var(--warning-text)] bg-[var(--warning-bg-subtle)]',
-                            )}>
-                              <Icon size={11} weight="bold" />
-                            </span>
-                          </Tooltip>
-                        );
-                      })}
-                    </span>
-                  )}
-                  <span className={cx(
-                    'text-xs leading-[17px] line-clamp-2 min-w-0',
-                    ranking.gateFailed && !ranking.gateOverridden ? 'text-[var(--error-text)]' : 'text-[var(--fg2)]',
-                  )}>
-                    {reasonClause(candidate, criteria)}
-                  </span>
+                <div className="min-w-0">
+                  {/* Two lines, not a sentence. The strength is why the row
+                      is here, so it leads at fg1; the gap is the caveat, so it
+                      sits a tone below. The labels carry the colour and the
+                      weight, which is what lets the column be scanned instead
+                      of read — green means "this is the case for them", amber
+                      means "this is the thing against". */}
+                  {(() => {
+                    const r = reasonParts(candidate, criteria);
+                    if (r.gate) {
+                      return (
+                        <span className="text-xs leading-[17px] font-medium text-[var(--error-text)] line-clamp-2 min-w-0">
+                          {r.gate}
+                        </span>
+                      );
+                    }
+                    return (
+                      <span className="text-xs leading-[17px] min-w-0 block">
+                        <span className="block truncate text-[var(--fg1)]">
+                          <span className="font-bold text-[var(--success-text)]">Strong </span>
+                          {r.strong}
+                        </span>
+                        {r.gap && (
+                          <span className="block truncate text-[var(--fg2)]">
+                            <span className="font-bold text-[var(--orange-930)]">Gap </span>
+                            {r.gap}
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })()}
                 </div>
               </td>
 

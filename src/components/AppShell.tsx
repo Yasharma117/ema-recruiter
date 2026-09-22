@@ -258,7 +258,7 @@ function Sidebar({
         </div>
       )}
 
-      <div className={cx('border-t border-[var(--beige-300)] flex items-center gap-2.5 shrink-0', collapsed ? 'justify-center py-3' : 'p-3')}>
+      <div className={cx('border-t border-[var(--rail-line)] flex items-center gap-2.5 shrink-0', collapsed ? 'justify-center py-3' : 'p-3')}>
         <Avatar name="Sarah Chen" size={28} tone="railMark" />
         {!collapsed && (
           <div className="min-w-0">

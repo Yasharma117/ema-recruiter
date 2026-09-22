@@ -119,7 +119,7 @@ export function CompareModal({
           <div className="flex items-center gap-1.5 mb-1.5">
             <Sparkle size={13} weight="fill" className="text-[var(--ai-magic-text)]" />
             <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--ai-magic-text)]">
-              Ema's read · Review before deciding
+              Ema’s read · Review before deciding
             </span>
           </div>
           <p className="text-sm text-[var(--fg1)] leading-[21px]">{emaRead}</p>
@@ -173,7 +173,7 @@ export function CompareModal({
                     <button onClick={() => setSameOpen((o) => !o)}
                       className="w-full flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] hover:text-[var(--fg1)] cursor-pointer">
                       {sameOpen ? <CaretDown size={11} weight="bold" /> : <CaretRight size={11} weight="bold" />}
-                      Where they're the same ({same.length})
+                      Where they’re the same ({same.length})
                     </button>
                   </td>
                 </tr>

@@ -808,10 +808,16 @@ export function SearchConversational() {
     return (
       <AppShell chrome="hidden">
         <div className={cx(
-          'h-full overflow-y-auto bg-[var(--app-background)]',
+          'relative h-full overflow-y-auto bg-[var(--app-background)]',
           leaving ? LEAVE : 'animate-[emaFade_200ms_var(--ease-out-quint)_backwards]',
         )}>
-          <div className="p-5 space-y-3">
+          {/* The same painting as the cold start, turned down. Act 1 handed
+              over to a flat canvas, which made the middle of the flow read as
+              two different products — the wash was the screen's whole
+              atmosphere and then, on one click, nothing. It now fades across
+              the three acts instead of being switched off. */}
+          <Wash ambient strength={0.42} />
+          <div className="relative p-5 space-y-3">
             {/* Full width, so its right edge lines up with the cards below;
                 the brief's own text is capped to a readable measure inside. */}
             <div className="space-y-2.5" data-usage="role">
@@ -857,8 +863,9 @@ export function SearchConversational() {
 
   return (
     <AppShell chrome="enter" breadcrumbs={['Searches', SEARCH.name]} screen="search">
-      <div className="h-full overflow-y-auto">
-        <div className="max-w-[1100px] mx-auto p-5 space-y-3">
+      <div className="relative h-full overflow-y-auto">
+        <Wash ambient strength={0.2} />
+        <div className="relative max-w-[1100px] mx-auto p-5 space-y-3">
           {/* The thread folds to a line, but the reasoning stays reachable:
               "where did these filters come from" is the first question anyone
               asks of a configuration they did not type. */}

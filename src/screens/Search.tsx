@@ -336,7 +336,7 @@ export function SearchScreen() {
               <Card className="p-4">
                 <div className="text-xs font-bold uppercase tracking-[1.2px] text-[var(--fg3)] mb-2">Sources</div>
                 {[
-                  { key: 'public' as const, label: 'Public profiles', note: "Ema's external index" },
+                  { key: 'public' as const, label: 'Public profiles', note: "Ema’s external index" },
                   { key: 'internal' as const, label: 'Internal talent', note: 'Greenhouse', beta: true },
                 ].map((src) => (
                   <label key={src.key} className="flex items-start gap-2.5 py-1.5 cursor-pointer">

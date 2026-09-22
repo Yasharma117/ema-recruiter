@@ -278,6 +278,40 @@
   }
   /* An indefinite left-to-right sweep is the one thing here that cannot be justified. */
   .ema-skeleton::after { animation: none; }
+  /* The stage still changes colour; the bands just do not travel to do it. */
+  .wash-drift .wash-s,
+  .wash-drift.wash-leaving .wash-s { animation: none; }
+}
+
+/* ── Re-weighting, shown on the card that changed ──
+   Raising one criterion re-apportions every other share, so a number moving on
+   its own says what you did but not what it cost. The card that moved carries a
+   tint for a beat: green when it gained importance, red when it lost it.
+
+   `from` with no `to`, so the implicit end frame is the row's own background
+   and border — the same reason washIn is written this way. A `to` of
+   transparent would flash the page through the card on the last frame.
+
+   Importance is weight x type, because Required counts double: flipping
+   preferred to required at the same weight is a rise, and the card says so. */
+/* The tint holds, then releases. It first ran 900ms on ease-out-quint, which
+   is a curve that spends 80% of its travel in the first fifth of its duration:
+   the colour was half gone at 100ms and 90% gone at 300ms, so a 900ms pulse was
+   in practice a 150ms flicker. The hold is now explicit — full strength to 45%
+   of the duration, then an even fade — and the curve only governs the fade. */
+@keyframes scorePulseUp {
+  0%, 45% { background-color: var(--success-bg); border-color: var(--success-border) }
+}
+@keyframes scorePulseDown {
+  0%, 45% { background-color: var(--error-bg); border-color: var(--error-border) }
+}
+.score-up   { animation: scorePulseUp 1800ms cubic-bezier(.4, 0, .6, 1); }
+.score-down { animation: scorePulseDown 1800ms cubic-bezier(.4, 0, .6, 1); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* Still holds long enough to be read; just less time drifting out. */
+  .score-up   { animation: scorePulseUp 1200ms linear; }
+  .score-down { animation: scorePulseDown 1200ms linear; }
 }
 
 /* Visually hidden, still announced. */
@@ -392,41 +426,72 @@
    drift out of the palette.
 --------------------------------------------------------------------------- */
 .wash[data-tone="queued"] {
-  --w1: 227, 225, 219; --w1-lift: 217, 215, 207;   /* beige-400 / 500 */
-  --w2: 255, 234, 182; --w2-lift: 255, 223, 144;   /* yellow-300 / 400 */
-  --w4: 234, 232, 227;                              /* beige-300 */
+  --w1: 217, 215, 207; --w1-lift: 209, 206, 196;   /* beige-500 / 600 */
+  --w2: 255, 223, 144; --w2-lift: 251, 210, 125;   /* yellow-400 / 500 */
+  --w4: 227, 225, 219;                              /* beige-400 */
 }
 .wash[data-tone="sent"] {
-  --w1: 215, 237, 255; --w1-lift: 197, 228, 253;   /* blue-300 / 400 */
-  --w2: 176, 215, 247; --w2-lift: 213, 237, 255;   /* blue-500 */
-  --w4: 231, 229, 255;                              /* purple-300 */
+  --w1: 176, 215, 247; --w1-lift: 149, 198, 238;   /* blue-500 / 600 */
+  --w2: 197, 228, 253; --w2-lift: 176, 215, 247;   /* blue-400 / 500 */
+  --w4: 215, 237, 255;                              /* blue-300 */
 }
 .wash[data-tone="replied"] {
-  --w1: 216, 239, 238; --w1-lift: 206, 231, 229;   /* blue-300 x green-300 */
-  --w2: 215, 237, 255; --w2-lift: 197, 233, 204;   /* blue-300 / green-400 */
-  --w4: 216, 241, 220;                              /* green-300 */
-}
-.wash[data-tone="scheduling"] {
-  --w1: 255, 220, 191; --w1-lift: 255, 206, 166;   /* orange-300 / 400 */
-  --w2: 255, 234, 182; --w2-lift: 255, 223, 144;   /* yellow-300 / 400 */
-  --w4: 254, 194, 152;                              /* orange-500 */
-}
-.wash[data-tone="outcome"] {
-  --w1: 216, 241, 220; --w1-lift: 197, 233, 204;   /* green-300 / 400 */
-  --w2: 174, 222, 183; --w2-lift: 216, 241, 220;   /* green-500 / 300 */
+  --w1: 175, 218, 215; --w1-lift: 146, 202, 197;   /* blue-500 x green-500 */
+  --w2: 176, 215, 247; --w2-lift: 174, 222, 183;   /* blue-500 / green-500 */
   --w4: 197, 233, 204;                              /* green-400 */
 }
+.wash[data-tone="scheduling"] {
+  --w1: 255, 206, 166; --w1-lift: 254, 194, 152;   /* orange-400 / 500 */
+  --w2: 255, 223, 144; --w2-lift: 251, 210, 125;   /* yellow-400 / 500 */
+  --w4: 255, 220, 191;                              /* orange-300 */
+}
+.wash[data-tone="outcome"] {
+  --w1: 174, 222, 183; --w1-lift: 143, 207, 156;   /* green-500 / 600 */
+  --w2: 197, 233, 204; --w2-lift: 174, 222, 183;   /* green-400 / 500 */
+  --w4: 216, 241, 220;                              /* green-300 */
+}
 .wash[data-tone="blocked"] {
-  --w1: 255, 219, 215; --w1-lift: 255, 204, 197;   /* red-300 / 400 */
-  --w2: 255, 220, 191; --w2-lift: 255, 187, 180;   /* orange-300 / red-500 */
-  --w4: 255, 204, 197;                              /* red-400 */
+  --w1: 255, 204, 197; --w1-lift: 255, 187, 180;   /* red-400 / 500 */
+  --w2: 255, 206, 166; --w2-lift: 250, 167, 158;   /* orange-400 / red-600 */
+  --w4: 255, 219, 215;                              /* red-300 */
 }
 
 /* Behind working UI rather than an empty page: drops the centre veil, because
    there is no heading to keep clear here and a bright core under a dense board
    reads as a rendering fault. */
-.wash-ambient { opacity: .85; }
+.wash-ambient { opacity: var(--wash-strength, .85); }
 .wash-ambient .wash-veil { display: none; }
+
+/* The sweep belongs to the cold start, where it is the screen arriving. Every
+   later act mounts a fresh Wash, so leaving the animation on would repaint the
+   bands on each hand-off — three entrances for one continuous background, which
+   is the seam this was meant to remove. Without it the bands render settled and
+   simply come in with whatever cross-fade the act itself is already doing. */
+.wash-ambient .wash-s { animation: none; }
+
+/* ── A stage change, animated ──
+   A cross-fade alone is correct but inert: the colour swaps without anything
+   appearing to happen, which is why it still read as a state jump. During a
+   transition the bands drift a few percent across, incoming and outgoing in the
+   same direction, so the light moves through the page rather than being
+   replaced on it. Transform only, and only while two layers are alive.
+
+   The band delays are the cold start's cascade compressed to a third; at the
+   original 180/340/500ms a queue advance would still be settling a second and a
+   half later. */
+@keyframes washDriftIn  {
+  from { opacity: 0; transform: translate3d(-5%, 0, 0) rotate(var(--r)) }
+  to   { opacity: 1; transform: translate3d(0, 0, 0) rotate(var(--r)) }
+}
+@keyframes washDriftOut {
+  from { transform: translate3d(0, 0, 0) rotate(var(--r)) }
+  to   { transform: translate3d(4%, 0, 0) rotate(var(--r)) }
+}
+.wash-drift .wash-s { animation: washDriftIn 700ms var(--ease-out-quint) both; }
+.wash-drift.wash-leaving .wash-s { animation: washDriftOut 700ms var(--ease-out-quint) both; }
+.wash-drift .wash-2 { animation-delay: 60ms }
+.wash-drift .wash-3 { animation-delay: 120ms }
+.wash-drift .wash-4 { animation-delay: 180ms }
 
 /* The cold start sizes its bands in vh because it owns the whole viewport. The
    strip is ~120px tall, so three of the four bands would land outside it and
@@ -437,7 +502,21 @@
 .wash-ambient .wash-3 { height: 72%; top:  42%; }
 .wash-ambient .wash-4 { height: 42%; top:  72%; }
 
-/* Filtering is a re-tint, not a repaint: the bands hold their position and
-   cross-fade to the new key. */
-.wash-ambient .wash-i,
-.wash-ambient .wash-base { transition: background var(--dur-slow) var(--ease-out-quint); }
+/* A carried wash fades in rather than sweeping. On the search screen that is
+   the act handing over; in the outreach queue it is the stage changing under
+   you as you work, where React remounts the wash on a new tone — background
+   gradients cannot be transitioned, so the fade is what stops the new hue
+   arriving as a flash.
+
+   The keyframe has a `from` and no `to` on purpose. emaFade ends at opacity 1,
+   which overrode the element's own 0.3 for the length of the animation and then
+   snapped back at the end: every card advance flared to full strength and
+   dropped again. With only a `from`, the implicit end frame is whatever the
+   element already computes to, so it fades 0 → its own strength and stays. */
+@keyframes washIn  { from { opacity: 0 } }
+@keyframes washOut { to   { opacity: 0 } }
+.wash-ambient { animation: washIn 700ms var(--ease-out-quint); }
+/* The layer being replaced. `forwards` holds it at zero for the few frames
+   between the animation ending and React removing it, so it cannot flicker
+   back to full on the last frame. */
+.wash-ambient.wash-leaving { animation: washOut 700ms var(--ease-out-quint) forwards; }

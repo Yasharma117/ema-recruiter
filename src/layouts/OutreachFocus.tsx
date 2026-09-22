@@ -5,6 +5,7 @@ import {
 import type { OutreachRecord, OutreachState } from '../lib/types';
 import { STATES, nextAction, isHalted, type ActionId } from '../lib/outreach';
 import { SEARCH } from '../data/search';
+import { StageWash } from '../components/Wash';
 import { Avatar, Badge, Banner, Button, Checkbox, EmptyState, ToastStack, cx } from '../components/ui';
 import { OutreachDetail } from '../components/OutreachDetail';
 import { AppShell } from '../components/AppShell';
@@ -145,6 +146,13 @@ export function OutreachFocusBoard() {
   const waiting = records.length - allQueue.length;
 
   const record = queue[Math.min(cursor, queue.length - 1)] ?? null;
+  /* The focus view holds one item at a time, so the background can say where
+     that item sits in the funnel — the same painting as the search screen,
+     keyed to the stage rather than to the act. Working the queue becomes a
+     journey through the hues instead of a stack of identical white cards. */
+  const stageTone = record
+    ? COLUMNS.find((c) => c.states.includes(record.state))?.id ?? null
+    : null;
   const candidate = record ? byId.get(record.candidateId) : null;
 
   const boardOpen = manualBoard ?? allQueue.length === 0;
@@ -371,7 +379,6 @@ export function OutreachFocusBoard() {
                 </button>
               ))}
             </div>
-            <kbd className="font-mono text-xs text-[var(--fg3)]">B</kbd>
           </div>
 
           <div className={cx('flex gap-2', boardOpen ? 'flex-1 min-h-0' : 'items-stretch')}>
@@ -539,7 +546,18 @@ export function OutreachFocusBoard() {
         </div>
 
         {!boardOpen && (
-          <div className="flex-1 min-h-0 flex flex-col items-center overflow-y-auto">
+          <div className="relative flex-1 min-h-0">
+            {/* The wash sits behind, outside the scroller: `.wash` is absolute
+                with z-index 0, so inside the scroll container it both covered
+                the queue and scrolled away with it.
+
+                The scroller is absolutely positioned rather than `h-full`. A
+                percentage height resolving through flex-1 → min-h-0 → h-full is
+                exactly the chain that collapses, and when it did, the queue's
+                own `flex-1` children got zero height and the card vanished.
+                inset-0 against a positioned parent needs nothing to resolve. */}
+            <StageWash tone={stageTone} strength={0.75} />
+            <div className="absolute inset-0 z-10 flex flex-col items-center overflow-y-auto">
             {/* Progress — emptying the queue is the goal, so it is the headline. */}
             <div className="w-full max-w-[760px] px-5 pt-4 pb-3 shrink-0" data-usage="grouping">
               <div className="flex items-center gap-3">
@@ -558,7 +576,7 @@ export function OutreachFocusBoard() {
                 <span className="text-sm font-bold text-[var(--fg1)] tabular-nums">
                   {queue.length ? `${queue.length} left` : 'all clear'}
                 </span>
-              </div>
+                </div>
               <div className="text-xs text-[var(--fg3)] mt-1.5 flex items-center gap-2 flex-wrap">
                 {reviewIds ? (
                   <>
@@ -717,6 +735,7 @@ export function OutreachFocusBoard() {
                 )}
               </div>
             )}
+            </div>
           </div>
         )}
 
@@ -726,7 +745,7 @@ export function OutreachFocusBoard() {
             data-usage="bulk"
             role="status"
             aria-live="polite"
-            className="shrink-0 bg-[var(--surface-dark)] text-[var(--surface-dark-fg-strong)] px-5 py-2.5 flex items-center gap-3 flex-wrap animate-[emaRise_200ms_var(--ease-out-quint)]"
+            className="shrink-0 bg-[var(--surface-dark)] text-[var(--surface-dark-fg-strong)] px-5 py-3.5 flex items-center gap-3 flex-wrap animate-[emaRise_200ms_var(--ease-out-quint)]"
           >
             <span className="text-sm font-medium">{selected.size} selected</span>
             <button

@@ -317,6 +317,35 @@ export function RemoveButton({ onClick, title }: { onClick: () => void; title: s
   );
 }
 
+/**
+ * Whether this criterion just became more or less important, for one beat.
+ *
+ * Importance is weight x type: Required counts double in the score, so moving
+ * a criterion from preferred to required at the same weight is a rise and has
+ * to read as one. Returns a key alongside the direction so the row can remount
+ * its animation — re-applying the same class on a second change in a row would
+ * otherwise do nothing, and hammering the scale would light the card once.
+ */
+function useImportancePulse(c: Criterion) {
+  const rank = c.weight * (c.type === 'required' ? 2 : 1);
+  const prev = React.useRef(rank);
+  const [pulse, setPulse] = React.useState<{ dir: 'up' | 'down'; key: number } | null>(null);
+  const seq = React.useRef(0);
+
+  React.useEffect(() => {
+    if (rank === prev.current) return;
+    const dir = rank > prev.current ? 'up' : 'down';
+    prev.current = rank;
+    setPulse({ dir, key: seq.current++ });
+    // Matches the 1800ms .score-up / .score-down animation in index.css; if
+    // this fires first the class is pulled mid-fade and the tint snaps off.
+    const t = setTimeout(() => setPulse(null), 1800);
+    return () => clearTimeout(t);
+  }, [rank]);
+
+  return pulse;
+}
+
 export function ScorecardRow({
   criterion, onChange, onRemove, compact, weightControl = 'stepper', share, pending, note, nameNode,
 }: {
@@ -339,12 +368,19 @@ export function ScorecardRow({
   nameNode?: React.ReactNode;
 }) {
   const c = criterion;
+  const pulse = useImportancePulse(c);
 
   // The scale gets its own card shape at full size; compact keeps the row and
   // swaps only the control.
   if (weightControl === 'scale' && !compact) {
     return (
-      <div className="rounded-lg border border-[var(--border-color)] bg-[var(--bg3)] p-3">
+      <div
+        key={pulse ? `p${pulse.key}` : 'idle'}
+        className={cx(
+          'rounded-lg border border-[var(--border-color)] bg-[var(--bg3)] p-3',
+          pulse && (pulse.dir === 'up' ? 'score-up' : 'score-down'),
+        )}
+      >
         <div className="flex items-start gap-2.5">
           <DotsSixVertical size={15} className="text-[var(--fg3)] shrink-0 mt-0.5 cursor-grab" />
           <div className="flex-1 min-w-0">
@@ -386,14 +422,24 @@ export function ScorecardRow({
   return (
     // Compact wraps: in a 360px rail a long criterion name and four controls on
     // one line squeeze the stepper, so the name takes the first line alone.
-    <div className={cx(
-      'flex rounded-lg border border-[var(--border-color)] bg-[var(--bg3)]',
-      compact ? 'flex-wrap items-center gap-x-2 gap-y-1.5 p-2' : 'items-start gap-2.5 p-2.5',
-    )}>
+    <div
+      key={pulse ? `p${pulse.key}` : 'idle'}
+      className={cx(
+        'flex rounded-lg border border-[var(--border-color)] bg-[var(--bg3)]',
+        compact ? 'flex-wrap items-center gap-x-2 gap-y-1.5 p-2' : 'items-start gap-2.5 p-2.5',
+        pulse && (pulse.dir === 'up' ? 'score-up' : 'score-down'),
+      )}
+    >
       {!compact && <DotsSixVertical size={15} className="text-[var(--fg3)] shrink-0 mt-1 cursor-grab" />}
       <div className={cx('min-w-0', compact ? 'basis-full' : 'flex-1')}>
-        <div className="text-sm font-medium text-[var(--fg1)] leading-[18px]">
-          {nameNode ?? c.name}{note}
+        <div className="flex items-start gap-2">
+          <div className="flex-1 min-w-0 text-sm font-medium text-[var(--fg1)] leading-[18px]">
+            {nameNode ?? c.name}{note}
+          </div>
+          {/* Top right, on the name's line. At the end of the control row it
+              sat after the weight scale, so removing a criterion meant
+              reaching past the thing you were most likely to be adjusting. */}
+          {onRemove && <RemoveButton onClick={onRemove} title={`Remove ${c.name}`} />}
         </div>
         {!compact && <div className="text-xs text-[var(--fg3)] mt-0.5">Bar for a 5: {c.bar}</div>}
       </div>
@@ -448,9 +494,6 @@ export function ScorecardRow({
           className={cx(STEPPER, c.weight >= 5 && STEPPER_OFF)}
         >+</button>
       </div>
-      )}
-      {onRemove && (
-        <RemoveButton onClick={onRemove} title={`Remove ${c.name}`} />
       )}
     </div>
   );

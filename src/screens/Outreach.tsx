@@ -329,7 +329,7 @@ export function OutreachScreen() {
         </div>
 
         {checked.size > 0 && (
-          <div className="shrink-0 bg-[var(--surface-dark)] text-[var(--surface-dark-fg-strong)] px-4 py-2.5 flex items-center gap-3 animate-[emaRise_200ms_var(--ease-out-quint)]">
+          <div className="shrink-0 bg-[var(--surface-dark)] text-[var(--surface-dark-fg-strong)] px-5 py-3.5 flex items-center gap-3 animate-[emaRise_200ms_var(--ease-out-quint)]">
             <span className="text-sm font-medium">{checked.size} selected</span>
             <button onClick={() => setChecked(new Set())} className="text-xs text-[var(--surface-dark-fg)] hover:text-white cursor-pointer">Clear</button>
             <div className="w-px h-5 bg-[var(--surface-dark-line)]" />

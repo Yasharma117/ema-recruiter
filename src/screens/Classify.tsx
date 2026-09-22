@@ -117,7 +117,7 @@ export function ClassifyPanel({
       {/* Second job: the reply answers a question we asked about an unknown cell. */}
       {resolvable.length > 0 && (
         <div className="rounded-lg border border-[var(--beige-500)] bg-[var(--bg3)] p-3">
-          <div className="flex items-center gap-1.5 mb-1.5">
+          <div className="flex items-center gap-1.5 mb-2.5">
             <Question size={13} weight="bold" className="text-[var(--fg2)]" />
             <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)]">
               This answers what you asked
@@ -127,12 +127,20 @@ export function ClassifyPanel({
             const crit = criteria.find((c) => c.id === r.criterionId);
             if (!crit) return null;
             return (
-              <div key={r.criterionId} className="mt-2 first:mt-0">
-                <div className="text-sm text-[var(--fg1)]">{crit.name}</div>
-                <div className="text-xs text-[var(--fg2)] mt-1 pl-2 border-l-2 border-[var(--success-border)]">
+              <div key={r.criterionId} className="mt-3 first:mt-0">
+                {/* The criterion is what this block is about, so it leads. */}
+                <div className="text-sm font-medium text-[var(--fg1)]">{crit.name}</div>
+                {/* Their words, set as a quotation rather than as more body
+                    copy. The rule was --success-border, a pale mint that both
+                    disappeared against this panel and implied the quote was a
+                    pass mark rather than evidence. */}
+                <blockquote className="text-xs text-[var(--fg2)] leading-[17px] mt-1.5 pl-2.5 border-l-2 border-[var(--border-color)] m-0">
                   “{r.quote}”
-                </div>
-                <div className="flex items-center gap-2 mt-2">
+                </blockquote>
+                {/* Two answers to one question, so two buttons of the same
+                    height. A bare text link beside a filled button read as a
+                    caption, not as the other option. */}
+                <div className="flex items-center gap-1.5 mt-2.5">
                   <Button
                     size="xs"
                     icon={<Check size={11} weight="bold" />}
@@ -143,17 +151,19 @@ export function ClassifyPanel({
                   >
                     Record as {r.score} of 5
                   </Button>
-                  <button
+                  <Button
+                    size="xs"
+                    variant="ghost"
+                    color="altBrand"
                     onClick={() => setResolved((prev) => new Set(prev).add(r.criterionId))}
-                    className="text-xs text-[var(--fg2)] hover:text-[var(--fg1)] cursor-pointer"
                   >
                     Leave unknown
-                  </button>
+                  </Button>
                 </div>
               </div>
             );
           })}
-          <div className="text-xs text-[var(--fg3)] mt-2.5 pt-2.5 border-t border-[var(--beige-400)]">
+          <div className="text-xs text-[var(--fg2)] leading-[17px] mt-3 pt-2.5 border-t border-[var(--border-color)]">
             Recorded answers are kept as your judgement and survive a re-run.
           </div>
         </div>
