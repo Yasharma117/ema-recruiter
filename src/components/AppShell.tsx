@@ -327,7 +327,6 @@ export function AppShell({
           'h-14 shrink-0 flex items-center gap-3.5 px-5 bg-[var(--app-chrome)] border-b border-[var(--beige-400)]',
           chrome === 'enter' && 'animate-[emaIn_200ms_var(--ease-out-quint)_60ms_backwards]',
         )}>
-          {collapsed && <IconButton icon={<SidebarSimple size={16} />} onClick={() => setNav('full')} title="Expand sidebar" />}
           <div className="flex-1 min-w-0 flex items-center gap-2">
             {breadcrumbs?.length ? (
               <div className="flex items-center gap-1.5 min-w-0">

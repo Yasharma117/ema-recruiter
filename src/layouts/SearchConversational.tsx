@@ -1,12 +1,12 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Sparkle, Check, MagnifyingGlass, PaperPlaneTilt, CaretDown, ArrowCounterClockwise, PencilSimple,
+  Sparkle, Check, MagnifyingGlass, CaretDown, ArrowCounterClockwise, PencilSimple, ArrowUp, CaretLeft,
 } from '@phosphor-icons/react';
 import {
   SEARCH, FILTERS, FILTER_CATEGORIES, BRIEF_SOURCE, type FilterChip, type FilterMode,
 } from '../data/search';
-import { Button, Card, Textarea, ToastStack, cx } from '../components/ui';
+import { Button, Card, ToastStack, cx } from '../components/ui';
 import {
   ModePicker, ScorecardRow, ScorecardInfo, DerivedFrom, AddFilter, AddCriterion, RemoveButton,
   SuggestedMark, MODE_DOT, MODE_COPY,
@@ -142,8 +142,14 @@ const LEAVE = 'animate-[emaOut_120ms_var(--ease-out-quint)_forwards]';
    the row itself — so there is always exactly one item visibly being weighed.
    Sixteen of them, plus a beat at the start for reading, comes to about 3s. */
 const STEP = 150;
-/** The beat between answering a question and Ema asking the next one. */
-const ASK_MS = 340;
+/** When the act takes over. The ripple runs 400ms; handing over at 240 means
+    it is still fading as the screen changes, which is what keeps the press
+    feeling answered rather than waited on. */
+const RIPPLE_MS = 240;
+/** The beat between answering a question and Ema asking the next one.
+    340ms was shorter than the selection animation it was interrupting: you
+    pressed, and the card moved on before the pill had finished going green. */
+const ASK_MS = 900;
 
 /* ── The skeleton pass ──
    Before Ema writes anything it lays out the shape of what it is about to
@@ -185,6 +191,7 @@ export function SearchConversational() {
      there. It is a textarea, so disagreeing with it costs one select-all. */
   const [draft, setDraft] = React.useState(SEARCH.brief);
   const [answers, setAnswers] = React.useState<Record<string, string>>({});
+
   const [filters, setFilters] = React.useState<FilterChip[]>(FILTERS);
   const [stepsOpen, setStepsOpen] = React.useState(false);
   /** The brief has been handed over; the questions are on screen. */
@@ -205,6 +212,20 @@ export function SearchConversational() {
 
   const answered = BLOCKING.filter((s) => answers[s.id]).length;
   const ready = answered === BLOCKING.length;
+
+  /* `ready` the moment the last answer lands; `settled` one beat later.
+     The card is keyed on its state, so flipping straight to the summary
+     unmounted the pill you had just pressed on the same frame — the pick
+     animation played on question one, which has a beat before question two
+     arrives, and was destroyed before its first frame on question two. The
+     last answer now gets the same beat as the others. */
+  const [settled, setSettled] = React.useState(false);
+  React.useEffect(() => {
+    if (!ready) { setSettled(false); return; }
+    if (still) { setSettled(true); return; }
+    const t = setTimeout(() => setSettled(true), ASK_MS);
+    return () => clearTimeout(t);
+  }, [ready, still]);
 
   /* Both act changes replace the entire composition, and a straight swap costs
      two things. The click that caused it never registers — you press the last
@@ -332,6 +353,12 @@ export function SearchConversational() {
     setBrief(draft.trim());
     setBriefIn(true);
   };
+  /* The press, before the screen changes under it. The CTA hands the whole
+     viewport to the building act, and going straight there meant the click
+     that caused it never registered anywhere. */
+  const [ripple, setRipple] = React.useState<{ x: number; y: number; key: number } | null>(null);
+  const rippleSeq = React.useRef(0);
+
   /** Second beat: the answers are in, so act 2 has everything it needs. */
   const send = () => {
     if (!draft.trim() || unanswered.length || leaving) return;
@@ -348,6 +375,50 @@ export function SearchConversational() {
   /* ------------------------------ act 1: cold ----------------------------- */
 
   if (stage === 'cold') {
+    /* One box, morphing.
+       The thread version put your brief, Ema's reply and each question in
+       separate bubbles stacked down a scrolling page. It made the composer
+       disposable furniture and turned two multiple-choice questions into a
+       conversation transcript. This is the shape the screen actually has: a
+       single input that keeps its place and changes what it is asking for.
+
+       Its body holds a minimum height so the box does not resize under the
+       cursor between states — the content cross-fades inside a stable frame,
+       which is what makes it read as one object changing rather than three
+       boxes replacing each other. */
+    /* Which question the card is on.
+       `asked` only ever counts up — it exists to hold the answered question on
+       screen for a beat before the next one arrives. Deriving the index from it
+       alone meant going back to change question 1 left the card showing
+       question 2, because `asked` was still 2 and nothing walks it down. The
+       first unanswered question is the truth; `asked` only delays reaching it. */
+    const nextUnanswered = BLOCKING.findIndex((b) => !answers[b.id]);
+    /* findIndex returns -1 when everything is answered, and clamping that to 0
+       sent the card back to question one for the whole beat — which unmounted
+       the pill you had just pressed on question two, so its pick animation
+       never rendered. With nothing left unanswered the card holds the last
+       question until `settled` turns it into the summary. */
+    const qIdx = settled
+      ? -1
+      : nextUnanswered === -1
+        ? BLOCKING.length - 1
+        : Math.max(0, Math.min(nextUnanswered, asked - 1));
+    const step = qIdx >= 0 ? BLOCKING[qIdx] : null;
+    const stateKey = !briefIn ? 'compose' : step ? step.id : 'ready';
+
+    /* One step backwards, whatever "backwards" currently means: from the last
+       question to editing the brief, from any later one to the previous
+       answer. Inside the card it was a fourth control on a row of three real
+       options; at the window's corner it is what it actually is — the way out
+       of the step you are on, not a thing you can pick. */
+    const clear = (id: string) =>
+      setAnswers((a) => { const n = { ...a }; delete n[id]; return n; });
+    const goBack = () => {
+      if (settled) clear(BLOCKING[BLOCKING.length - 1].id);
+      else if (qIdx > 0) clear(BLOCKING[qIdx - 1].id);
+      else setBriefIn(false);
+    };
+
     return (
       <AppShell chrome="hidden">
         <div className="relative h-full overflow-y-auto bg-[var(--app-background)]">
@@ -360,144 +431,206 @@ export function SearchConversational() {
               </div>
 
               <h1 className="text-[26px] leading-[32px] font-medium text-[var(--fg1)] text-center animate-[emaRise_240ms_var(--ease-out-quint)_60ms_backwards]">
-                What role are you hiring for?
+                {briefIn ? 'Two things before I start' : 'What role are you hiring for?'}
               </h1>
-              {/* The lede explains what Ema is about to do. Once it has done it
-                  and is asking back, the explanation is in its own words. */}
-              {!briefIn && (
-                <p className="text-sm text-[var(--fg2)] mt-2 leading-[20px] text-center animate-[emaRise_240ms_var(--ease-out-quint)_120ms_backwards]">
-                  Describe it however you like, or paste the job description. Ema only asks about
-                  the things that decide who is eligible — everything else it infers, and you can
-                  change all of it afterwards.
-                </p>
+              <p className="text-sm text-[var(--fg2)] mt-2 leading-[20px] text-center animate-[emaRise_240ms_var(--ease-out-quint)_120ms_backwards]">
+                {briefIn
+                  ? 'Everything else I can infer from what you wrote, and you can change all of it afterwards.'
+                  : 'Describe it however you like, or paste the job description.'}
+              </p>
+
+              {/* What you already said, settled above the box. It was in the
+                  box's own tray, under the question — so the prompt you wrote
+                  sat at the bottom of the thing asking you the next question,
+                  which is upside down. Context goes above; the box below it is
+                  only ever the live turn. */}
+              {briefIn && (
+                <div className="mt-5 rounded-lg border border-[var(--border-color)] bg-[var(--bg3)] px-3.5 py-2.5 flex items-start gap-3 animate-[emaRise_240ms_var(--ease-out-quint)_160ms_backwards]">
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] mb-1">
+                      Your brief
+                    </div>
+                    <div className="text-sm text-[var(--fg2)] leading-[20px] line-clamp-2">{draft.trim()}</div>
+                  </div>
+                  <button
+                    onClick={() => setBriefIn(false)}
+                    className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-[var(--fg2)] rounded-xs px-1.5 py-1 hover:text-[var(--fg1)] hover:bg-[var(--beige-200)] cursor-pointer transition-colors duration-150"
+                  >
+                    <PencilSimple size={11} />
+                    Edit
+                  </button>
+                </div>
               )}
 
-              {/* Beat one: the box, and nothing else to answer yet. */}
-              <div className="mt-5 animate-[emaRise_240ms_var(--ease-out-quint)_180ms_backwards]">
-                {briefIn ? (
-                  // Handed over. It stays readable, and stays editable — going
-                  // back is a click, not a restart.
-                  <Card className="px-3.5 py-3">
-                    <div className="flex items-baseline gap-2 mb-1">
-                      <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] flex-1">
-                        Your brief
-                      </span>
-                      <button
-                        onClick={() => setBriefIn(false)}
-                        className="text-xs text-[var(--fg3)] rounded-xs px-1.5 py-0.5 hover:text-[var(--fg1)] hover:bg-[var(--beige-100)] cursor-pointer transition-colors duration-150"
-                      >
-                        Edit
-                      </button>
-                    </div>
-                    <div className="text-sm text-[var(--fg2)] leading-[20px]">{draft.trim()}</div>
-                  </Card>
-                ) : (
-                  <Textarea
-                    autoFocus
-                    value={draft}
-                    onChange={(e) => setDraft(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitBrief(); }}
-                    rows={5}
-                    className="text-[15px] leading-[22px] p-4"
-                    placeholder="Staff ML engineer for payments risk. Needs production model serving at real scale, 7+ years, fintech preferred…"
-                  />
+              <div className={cx(
+                'rounded-xl border border-[var(--border-color)] bg-white shadow-[var(--shadow-sm)] overflow-hidden',
+                briefIn ? 'mt-3' : 'mt-5',
+                'animate-[emaRise_240ms_var(--ease-out-quint)_180ms_backwards]',
+              )}>
+                <div key={stateKey} className="min-h-[136px] px-5 py-[18px] animate-[emaIn_220ms_var(--ease-out-quint)]">
+                  {!briefIn ? (
+                    <textarea
+                      autoFocus
+                      value={draft}
+                      onChange={(e) => setDraft(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) submitBrief(); }}
+                      rows={4}
+                      className="w-full resize-none bg-transparent outline-none text-[15px] leading-[22px] text-[var(--fg1)] placeholder:text-[var(--fg3)]"
+                      placeholder="Staff ML engineer for payments risk. Needs production model serving at real scale, 7+ years, fintech preferred…"
+                    />
+                  ) : (
+                    <>
+                      {/* No "EMA" eyebrow. The heading above the card already
+                          says she is the one asking, and the label pushed the
+                          question — the only thing on this card that matters —
+                          a row down from the top of it. The question leads and
+                          the progress sits on its line. */}
+                      {step ? (
+                        <>
+                          <div className="flex items-start gap-3">
+                            <div className="flex-1 min-w-0 text-base font-medium text-[var(--fg1)] leading-6">
+                              {step.ask}
+                            </div>
+                            <span className="pt-0.5">
+                              <QuestionProgress steps={BLOCKING} answers={answers} current={qIdx} />
+                            </span>
+                          </div>
+                          <div className="text-xs text-[var(--fg2)] mt-1">{step.why}</div>
+                          <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                            {step.options.map((o) => (
+                              <Choice
+                                key={o}
+                                on={answers[step.id] === o}
+                                onClick={() => setAnswers((a) => ({ ...a, [step.id]: o }))}
+                              >
+                                {o}
+                              </Choice>
+                            ))}
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-start gap-3">
+                            <div className="flex-1 min-w-0 text-base font-medium text-[var(--fg1)] leading-6">
+                              That is everything I need.
+                            </div>
+                            <span className="pt-0.5">
+                              <QuestionProgress steps={BLOCKING} answers={answers} current={qIdx} />
+                            </span>
+                          </div>
+                          {/* Still changeable: answering is not a door that locks. */}
+                          <div className="flex flex-wrap gap-1.5 mt-3">
+                            {BLOCKING.map((b) => (
+                              <button
+                                key={b.id}
+                                onClick={() => setAnswers((a) => { const n = { ...a }; delete n[b.id]; return n; })}
+                                title={`Change: ${b.ask}`}
+                                className="inline-flex items-center gap-1.5 h-8 px-3 rounded-pill border border-[var(--border-color)] bg-[var(--bg3)] text-sm text-[var(--fg1)] cursor-pointer hover:border-[var(--focus-border)] hover:bg-white transition-colors duration-150"
+                              >
+                                {answers[b.id]}
+                                <PencilSimple size={11} className="text-[var(--fg2)]" />
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+
+                      {/* Its own line, under the answers and clear of them.
+                          Bottom-left is where a step's way back lives; in the
+                          answer row it was a fourth pill among three real
+                          options, and at the window's corner it belonged to
+                          the page rather than to the question. */}
+                      <div className="mt-4 pt-3 border-t border-[var(--border-subtle)]">
+                        <button
+                          onClick={goBack}
+                          className="inline-flex items-center gap-1.5 -ml-1.5 text-xs font-medium text-[var(--fg2)] rounded-sm px-1.5 py-1 hover:text-[var(--fg1)] hover:bg-[var(--beige-100)] cursor-pointer transition-colors duration-150"
+                        >
+                          <CaretLeft size={11} weight="bold" />
+                          {qIdx > 0 || settled ? 'Previous question' : 'Edit brief'}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* The tray belongs to the composer, because the send control
+                    belongs inside the field it sends. A question has its own
+                    answers; it does not need a footer. */}
+                {!briefIn && (
+                  <div className="border-t border-[var(--border-subtle)] bg-[var(--bg3)] px-3 py-2.5 flex items-center gap-2">
+                    <span className="text-xs text-[var(--fg2)] flex-1 truncate">⌘⏎ to send</span>
+                    <button
+                      onClick={submitBrief}
+                      disabled={!draft.trim()}
+                      aria-label="Send your brief"
+                      className={cx(
+                        'shrink-0 size-8 rounded-md inline-flex items-center justify-center transition-colors duration-150',
+                        draft.trim()
+                          ? 'bg-[var(--brand-primary)] text-white hover:bg-[var(--brand-primary-accent)] cursor-pointer'
+                          : 'bg-[var(--beige-300)] text-[var(--fg3)] cursor-not-allowed',
+                      )}
+                    >
+                      <ArrowUp size={15} weight="bold" />
+                    </button>
+                  </div>
                 )}
               </div>
 
-              {!briefIn ? (
-                <div className="mt-4 flex items-center gap-2.5 animate-[emaRise_240ms_var(--ease-out-quint)_240ms_backwards]">
-                  <Button icon={<PaperPlaneTilt size={14} />} disabled={!draft.trim()} onClick={submitBrief}>
-                    Send
+              {briefIn && settled && (
+                <div className="mt-4 animate-[emaRise_240ms_var(--ease-out-quint)_backwards]">
+                  <Button
+                    block
+                    size="lg"
+                    className="press relative overflow-hidden h-[52px] text-[15px]"
+                    // The icon needs lifting too — Button renders it as a
+                    // static sibling, so the ripple crossed it even with the
+                    // label raised.
+                    icon={<span className="relative z-10 inline-flex"><Sparkle size={16} weight="fill" /></span>}
+                    onClick={(e) => {
+                      if (leaving) return;
+                      const r = e.currentTarget.getBoundingClientRect();
+                      setRipple({
+                        x: e.clientX - r.left,
+                        y: e.clientY - r.top,
+                        key: rippleSeq.current++,
+                      });
+                      if (still) send();
+                      else window.setTimeout(send, RIPPLE_MS);
+                    }}
+                  >
+                    {/* Above the light. A positioned element paints over its
+                        static siblings whatever the DOM order, so without this
+                        the ripple washed across the label on its way out. */}
+                    <span className="relative z-10">Build search criteria</span>
+                    {ripple && (
+                      <span
+                        key={ripple.key}
+                        aria-hidden
+                        className="ripple"
+                        style={{ left: ripple.x, top: ripple.y }}
+                      />
+                    )}
                   </Button>
-                  <span className="text-xs text-[var(--fg3)]">⌘⏎ to send</span>
-                  {/* The nav is gone in this act, so the way out cannot be in it. */}
+                  <p className="text-xs text-[var(--fg2)] leading-[18px] mt-2.5 mb-0 text-center">
+                    Ema turns your brief into{' '}
+                    <span className="font-medium text-[var(--fg1)]">filters</span> that decide who is
+                    eligible and a <span className="font-medium text-[var(--fg1)]">scorecard</span> that
+                    decides the order. Nothing runs yet — you review and adjust them, then press{' '}
+                    <span className="font-medium text-[var(--fg1)]">Begin search</span> to see the
+                    ranked candidates.
+                  </p>
+                </div>
+              )}
+
+              {!briefIn && (
+                <div className="mt-4 text-center">
                   <button
                     onClick={() => navigate(mode === 'variants' ? '/search' : '/')}
-                    className="ml-auto text-xs text-[var(--fg3)] rounded-xs px-1.5 py-1 hover:text-[var(--fg1)] hover:bg-[var(--beige-100)] cursor-pointer transition-colors duration-150"
+                    className="text-xs text-[var(--fg2)] rounded-xs px-1.5 py-1 hover:text-[var(--fg1)] hover:bg-[var(--beige-200)] cursor-pointer transition-colors duration-150"
                   >
                     {mode === 'variants' ? 'Prefer a form? Switch layout' : '← Overview'}
                   </button>
                 </div>
-              ) : (
-                <>
-                  {/* Beat two: Ema answers, and asks for the only two things it
-                      cannot infer without excluding people by accident. */}
-                  <div className="mt-4">
-                    <Bubble from="ema">
-                      Read that. Two things change <span className="font-medium">who is in the pool</span>,
-                      so they are yours to confirm — everything else I can infer.
-                    </Bubble>
-                  </div>
-
-                  <div className="mt-3 space-y-2.5">
-                    {BLOCKING.slice(0, asked).map((step, i) => (
-                      <Card
-                        key={step.id}
-                        className="p-3 animate-[emaRise_240ms_var(--ease-out-quint)_backwards]"
-                      >
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-sm font-bold text-[var(--fg1)] flex-1">{step.ask}</span>
-                          {/* Two questions, and the screen says so — otherwise
-                              answering one gives no sense of how much is left. */}
-                          <span className="text-xs text-[var(--fg2)] tabular-nums shrink-0">
-                            {i + 1} of {BLOCKING.length}
-                          </span>
-                        </div>
-                        <div className="text-xs text-[var(--fg2)] mt-0.5 mb-2">{step.why}</div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {step.options.map((o) => (
-                            <Choice
-                              key={o}
-                              on={answers[step.id] === o}
-                              onClick={() => setAnswers((a) => ({ ...a, [step.id]: o }))}
-                            >
-                              {o}
-                            </Choice>
-                          ))}
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
-
-                  {/* The way forward appears once there is nothing left to ask.
-                      Before that the questions are the only task on screen. */}
-                  {allAsked && (
-                    <div className="mt-4 animate-[emaRise_240ms_var(--ease-out-quint)_backwards]">
-                      {/* The button used to say "Build the search" next to
-                          "Ema builds the filters and scorecard next", which
-                          named the next click and nothing after it. Pressing
-                          this does not run a search — it writes the criteria a
-                          search will run on, and the whole point is that you get
-                          to argue with them first. So the arc is stated: Ema
-                          drafts, you vet, then you run. */}
-                      {/* Full measure: this is the only action in the act, and
-                          a small button floating at the left of a 620px column
-                          read as one option among several. */}
-                      <Button
-                        block
-                        size="lg"
-                        icon={<Sparkle size={16} weight="fill" />}
-                        disabled={unanswered.length > 0}
-                        onClick={send}
-                      >
-                        Build search criteria
-                      </Button>
-                      {unanswered.length > 0 && (
-                        <div className="text-xs text-[var(--fg2)] text-center mt-2">
-                          Pick {sentenceList(unanswered)}
-                        </div>
-                      )}
-                      <p className="text-xs text-[var(--fg2)] leading-[18px] mt-2.5 mb-0 text-center">
-                        Ema turns your brief into{' '}
-                        <span className="font-medium text-[var(--fg1)]">filters</span> that decide who is
-                        eligible and a <span className="font-medium text-[var(--fg1)]">scorecard</span> that
-                        decides the order. Nothing runs yet — you review and adjust them, then press{' '}
-                        <span className="font-medium text-[var(--fg1)]">Begin search</span> to see the
-                        ranked candidates.
-                      </p>
-                    </div>
-                  )}
-                </>
               )}
             </div>
           </div>
@@ -802,9 +935,6 @@ export function SearchConversational() {
   /* --------------------------- act 2: configuring ------------------------- */
 
   if (stage === 'configuring') {
-    /* Said back in the user's own options, never hardcoded: the point of
-       repeating it is that it is what they picked. */
-    const settled = BLOCKING.map((s) => answers[s.id]).filter(Boolean).join(', ');
     return (
       <AppShell chrome="hidden">
         <div className={cx(
@@ -820,13 +950,11 @@ export function SearchConversational() {
           <div className="relative p-5 space-y-3">
             {/* Full width, so its right edge lines up with the cards below;
                 the brief's own text is capped to a readable measure inside. */}
-            <div className="space-y-2.5" data-usage="role">
-              <Bubble from="ema">
-                Read that. <span className="font-medium">{settled}</span>. Building your filters
-                and scorecard — each one lights up the words it came from.
-              </Bubble>
-              {/* The brief stays on screen through the pass: the lit phrase is
-                  the only evidence that a row came from something you wrote. */}
+            <div data-usage="role">
+              {/* No Ema panel above this. It restated the answers you had just
+                  given and announced a pass that is visibly running underneath
+                  it — and the lit phrase in the brief already says what she is
+                  reading, better than a sentence claiming she is reading it. */}
               <Card className="px-3 py-2.5">
                 <div className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--fg2)] mb-1">
                   Your brief
@@ -965,20 +1093,68 @@ function BoneCriterion({ id }: { id: string }) {
   );
 }
 
+/**
+ * How many questions there are, and which one you are on.
+ *
+ * "1 of 2" alone is a number you have to read. The segments say the same thing
+ * before you read it: how many are coming, how many are behind you, and that
+ * this is a short list rather than an open-ended interrogation — which is the
+ * thing worth knowing when something starts asking you questions.
+ */
+function QuestionProgress({
+  steps, answers, current,
+}: { steps: Step[]; answers: Record<string, string>; current: number }) {
+  const done = steps.filter((s) => answers[s.id]).length;
+  return (
+    <span className="flex items-center gap-2 shrink-0">
+      <span className="text-xs text-[var(--fg2)] tabular-nums">
+        {current >= 0 ? `Question ${current + 1} of ${steps.length}` : `${done} of ${steps.length} answered`}
+      </span>
+      <span className="flex items-center gap-1" aria-hidden>
+        {steps.map((s, i) => (
+          <span
+            key={s.id}
+            className={cx(
+              'h-1.5 rounded-pill transition-all duration-300 ease-[var(--ease-out-quint)]',
+              answers[s.id]
+                ? 'w-5 bg-[var(--brand-primary)]'      // answered
+                : i === current
+                  ? 'w-5 bg-[var(--beige-600)]'        // being asked
+                  : 'w-1.5 bg-[var(--beige-400)]',     // still to come
+            )}
+          />
+        ))}
+      </span>
+    </span>
+  );
+}
+
 function Choice({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
       aria-pressed={on}
       className={cx(
-        'inline-flex items-center gap-1.5 h-9 px-3.5 rounded-pill border text-sm font-medium',
-        'cursor-pointer transition-colors duration-150',
+        'inline-flex items-center gap-1.5 h-10 px-4 rounded-pill border text-sm font-medium',
+        // Transform is in the transition so the press has somewhere to go, and
+        // the pill settles back rather than snapping.
+        'cursor-pointer transition-[background-color,border-color,color,box-shadow,transform] duration-200 ease-[var(--ease-out-quint)]',
+        'active:scale-[0.97]',
         on
-          ? 'bg-[var(--brand-primary)] border-[var(--brand-primary)] text-[var(--brand-primary-foreground)] hover:bg-[var(--brand-primary-accent)]'
-          : 'bg-white border-[var(--border-color)] text-[var(--fg1)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-100)] active:bg-[var(--beige-200)]',
+          ? 'choice-pick bg-[var(--brand-primary)] border-[var(--brand-primary)] text-[var(--brand-primary-foreground)] shadow-[var(--shadow-sm)] hover:bg-[var(--brand-primary-accent)]'
+          : 'bg-white border-[var(--border-color)] text-[var(--fg1)] hover:border-[var(--focus-border)] hover:bg-[var(--beige-100)]',
       )}
     >
-      {on && <Check size={12} weight="bold" className="shrink-0" />}
+      {/* The tick only exists once chosen, so it plays its entrance exactly
+          once — the pill widens into it rather than the glyph appearing in
+          place, which is what makes picking feel like something happened. */}
+      {on && (
+        <Check
+          size={13}
+          weight="bold"
+          className="shrink-0 animate-[emaPop_220ms_var(--ease-out-quint)]"
+        />
+      )}
       {children}
     </button>
   );
@@ -1018,28 +1194,3 @@ function Lit({ text, phrase }: { text: string; phrase: string | null }) {
  * `from` is kept because the signature is part of the screen's grammar, but
  * only Ema has ever spoken on this screen.
  */
-function Bubble({ from, children }: { from: 'ema' | 'you'; children: React.ReactNode }) {
-  if (from === 'you') {
-    return (
-      <div className="flex justify-end animate-[emaRise_200ms_var(--ease-out-quint)_backwards]">
-        <div className="max-w-[80%] rounded-lg bg-[var(--brand-primary)] text-[var(--brand-primary-foreground)] px-3.5 py-2.5 text-sm leading-[20px] whitespace-pre-line">
-          {children}
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className={cx(
-      'rounded-lg border border-[var(--ai-magic-border)] bg-[var(--ai-magic-bg-subtle)] px-3.5 py-3',
-      'animate-[emaRise_200ms_var(--ease-out-quint)_80ms_backwards]',
-    )}>
-      <div className="flex items-center gap-1.5 mb-1.5">
-        <Sparkle size={12} weight="fill" className="text-[var(--ai-magic-text)]" />
-        <span className="text-xs font-bold uppercase tracking-[0.6px] text-[var(--ai-magic-text)]">
-          Ema
-        </span>
-      </div>
-      <div className="text-sm text-[var(--fg1)] leading-[20px]">{children}</div>
-    </div>
-  );
-}

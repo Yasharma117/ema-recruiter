@@ -314,6 +314,79 @@
   .score-down { animation: scorePulseDown 1200ms linear; }
 }
 
+/* Picking an option.
+   The tick alone was 13px of emaPop — a scale from .96, on a glyph, inside a
+   340ms window before the card moved on. Nothing to see. The pill itself now
+   takes the hit: a short swell and a ring that pushes out and fades, which is
+   the part you notice from across the card. */
+@keyframes choicePick {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0   rgba(31, 136, 68, 0.45) }
+  35%  { transform: scale(1.05); box-shadow: 0 0 0 5px rgba(31, 136, 68, 0.22) }
+  100% { transform: scale(1);    box-shadow: 0 0 0 12px rgba(31, 136, 68, 0) }
+}
+.choice-pick { animation: choicePick 520ms var(--ease-out-quint); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The ring still lands; the pill does not move to deliver it. */
+  @keyframes choicePick {
+    0%   { box-shadow: 0 0 0 0   rgba(31, 136, 68, 0.45) }
+    100% { box-shadow: 0 0 0 12px rgba(31, 136, 68, 0) }
+  }
+}
+
+/* ── The press, and the light it throws ──
+   Two things, because they are two things. The press is `:active` scale — the
+   instant, physical acknowledgement a button owes you, and the part that was
+   missing entirely. The ripple is the flourish on top.
+
+   It was a hard white disc scaled from zero over 560ms: nothing in the world
+   appears from nothing, a flat edge sweeping across the label reads as two
+   objects rather than one light, and 560ms is twice as long as UI feedback
+   should last. It now starts at a quarter size with a soft radial falloff, and
+   the act takes over while it is still fading rather than after it. */
+/* Scale and opacity run on separate clocks, because they are doing different
+   jobs. The expansion wants the strong ease-out — out fast, settling late. The
+   fade must not: sharing that curve put the light at 6% opacity by 120ms, so it
+   was over before it had travelled anywhere. Linear, holding near full for the
+   first 40%, is what makes it read as light crossing the button. */
+@keyframes ripplePressScale {
+  from { transform: scale(0.25) }
+  to   { transform: scale(1) }
+}
+@keyframes ripplePressFade {
+  0%   { opacity: 0.45 }
+  40%  { opacity: 0.38 }
+  100% { opacity: 0 }
+}
+.ripple {
+  position: absolute;
+  z-index: 0;
+  width: 1200px; height: 1200px;
+  margin: -600px 0 0 -600px;
+  border-radius: 9999px;
+  /* Falls off to nothing well before its edge, so there is never a rim. */
+  background: radial-gradient(circle,
+    rgba(255, 255, 255, 0.55) 0%,
+    rgba(255, 255, 255, 0.20) 45%,
+    rgba(255, 255, 255, 0) 68%);
+  pointer-events: none;
+  animation:
+    ripplePressScale 420ms cubic-bezier(0.23, 1, 0.32, 1) forwards,
+    ripplePressFade  420ms linear forwards;
+}
+
+/* A block button is 848px wide; 0.97 would visibly shove the layout. */
+.press {
+  transition: transform 160ms cubic-bezier(0.23, 1, 0.32, 1);
+}
+.press:active { transform: scale(0.98); }
+
+@media (prefers-reduced-motion: reduce) {
+  /* The press still answers; the light does not travel. */
+  .ripple { display: none; }
+  .press:active { transform: none; }
+}
+
 /* Visually hidden, still announced. */
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
